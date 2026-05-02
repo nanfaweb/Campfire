@@ -1,16 +1,80 @@
 "use client";
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [authError, setAuthError] = useState('');
+
+  // Form State
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [username, setUsername] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  const router = useRouter();
   const supabase = createClient();
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setAuthError('');
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      router.push('/home');
+    } catch (error: any) {
+      console.error('Error logging in:', error.message);
+      setAuthError(error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+    if (password !== confirmPassword) {
+      setAuthError("Passwords do not match");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            display_name: fullName,
+            username: username,
+          }
+        }
+      });
+      if (error) throw error;
+      router.push('/setup-profile');
+    } catch (error: any) {
+      console.error('Error signing up:', error.message);
+      if (error.message?.toLowerCase().includes('already registered') || error.message?.toLowerCase().includes('already exists')) {
+        setAuthError('This email is already registered. Please log in instead.');
+        setIsLogin(true);
+      } else if (error.message?.toLowerCase().includes('username')) {
+        setAuthError('This username is already taken. Please choose another one.');
+      } else {
+        setAuthError(error.message);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
+    setAuthError('');
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -21,10 +85,11 @@ export default function AuthPage() {
 
       if (error) {
         console.error('Error signing in with Google:', error.message);
-        alert('Error signing in with Google. Please try again.');
+        setAuthError('Error signing in with Google. Please try again.');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Unexpected error:', err);
+      setAuthError(err.message || 'An unexpected error occurred.');
     } finally {
       setIsLoading(false);
     }
@@ -75,32 +140,53 @@ export default function AuthPage() {
             />
 
             <button
-              onClick={() => setIsLogin(true)}
+              onClick={() => { setIsLogin(true); setAuthError(''); }}
               className={`relative z-10 flex-1 py-2.5 text-center text-[12px] font-bold uppercase tracking-wider rounded-full transition-colors duration-300 ${isLogin ? 'text-white' : 'text-stone-500 hover:text-stone-700'}`}
             >
               Log In
             </button>
             <button
-              onClick={() => setIsLogin(false)}
+              onClick={() => { setIsLogin(false); setAuthError(''); }}
               className={`relative z-10 flex-1 py-2.5 text-center text-[12px] font-bold uppercase tracking-wider rounded-full transition-colors duration-300 ${!isLogin ? 'text-white' : 'text-stone-500 hover:text-stone-700'}`}
             >
               Sign Up
             </button>
           </div>
 
+          {authError && (
+            <div className="bg-[#FFEFEF] border border-[#FFD6D6] text-[#D84C4C] text-xs font-semibold p-3.5 rounded-xl animate-fade-in flex items-center gap-2">
+              <span className="material-symbols-outlined text-[18px]">error</span>
+              <span>{authError}</span>
+            </div>
+          )}
+
           {/* Form Container with dynamic height for smooth spacing */}
           <div className={`relative transition-all duration-500 ease-in-out ${isLogin ? 'h-[275px]' : 'h-[385px]'}`}>
             {/* Login Form */}
             {isLogin && (
-              <form className="space-y-6 animate-fade-in absolute w-full top-0 left-0" onSubmit={(e) => e.preventDefault()}>
+              <form className="space-y-6 animate-fade-in absolute w-full top-0 left-0" onSubmit={handleLogin}>
                 <div className="space-y-4">
                   <div className="space-y-1.5">
                     <label className="block font-button text-[10px] uppercase tracking-widest text-on-surface ml-sm opacity-60">Email Address</label>
-                    <input className="w-full h-[50px] px-lg rounded-xl border-[#EDE0D4] bg-white focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all placeholder:text-[#6B6056]/30 text-sm text-on-surface" placeholder="you@example.com" type="email" />
+                    <input
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className="w-full h-[50px] px-lg rounded-xl border-[#EDE0D4] bg-white focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all placeholder:text-[#6B6056]/30 text-sm text-on-surface"
+                      placeholder="you@example.com"
+                      type="email"
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <label className="block font-button text-[10px] uppercase tracking-widest text-on-surface ml-sm opacity-60">Password</label>
-                    <input className="w-full h-[50px] px-lg rounded-xl border-[#EDE0D4] bg-white focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all placeholder:text-[#6B6056]/30 text-sm text-on-surface" placeholder="Minimum 8 characters" type="password" />
+                    <input
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="w-full h-[50px] px-lg rounded-xl border-[#EDE0D4] bg-white focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all placeholder:text-[#6B6056]/30 text-sm text-on-surface"
+                      placeholder="Minimum 8 characters"
+                      type="password"
+                    />
                   </div>
                 </div>
 
@@ -108,46 +194,81 @@ export default function AuthPage() {
                   <button type="button" className="text-[10px] font-bold uppercase tracking-widest text-[#F4845F] hover:text-primary transition-colors">Forgot Password?</button>
                 </div>
 
-                <button className="w-full h-[50px] bg-primary-container text-white rounded-xl font-button text-sm ember-glow hover:scale-[1.01] active:scale-[0.99] transition-all" type="submit">
-                  Log In
+                <button disabled={isLoading} className="w-full h-[50px] bg-primary-container text-white rounded-xl font-button text-sm ember-glow hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-70" type="submit">
+                  {isLoading ? 'Logging In...' : 'Log In'}
                 </button>
               </form>
             )}
 
             {/* Registration Form */}
             {!isLogin && (
-              <form className="space-y-6 animate-fade-in absolute w-full top-0 left-0" onSubmit={(e) => e.preventDefault()}>
+              <form className="space-y-6 animate-fade-in absolute w-full top-0 left-0" onSubmit={handleSignup}>
                 <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-1.5">
                     <label className="block font-button text-[10px] uppercase tracking-widest text-on-surface ml-sm opacity-60">Full Name</label>
-                    <input className="w-full h-[50px] px-lg rounded-xl border-[#EDE0D4] bg-white focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all placeholder:text-[#6B6056]/30 text-sm text-on-surface" placeholder="e.g. John Smith" type="text" />
+                    <input
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      required
+                      className="w-full h-[50px] px-lg rounded-xl border-[#EDE0D4] bg-white focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all placeholder:text-[#6B6056]/30 text-sm text-on-surface"
+                      placeholder="e.g. John Smith"
+                      type="text"
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <label className="block font-button text-[10px] uppercase tracking-widest text-on-surface ml-sm opacity-60">Username</label>
                     <div className="relative">
                       <span className="absolute left-lg top-1/2 -translate-y-1/2 text-stone-400 text-sm">@</span>
-                      <input className="w-full h-[50px] pl-xl pr-lg rounded-xl border-[#EDE0D4] bg-white focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all placeholder:text-[#6B6056]/30 text-sm text-on-surface" placeholder="e.g. wanderer_42" type="text" />
+                      <input
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        required
+                        className="w-full h-[50px] pl-xl pr-lg rounded-xl border-[#EDE0D4] bg-white focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all placeholder:text-[#6B6056]/30 text-sm text-on-surface"
+                        placeholder="   e.g. wanderer_42"
+                        type="text"
+                      />
                     </div>
                   </div>
                   <div className="space-y-1.5">
                     <label className="block font-button text-[10px] uppercase tracking-widest text-on-surface ml-sm opacity-60">Email Address</label>
-                    <input className="w-full h-[50px] px-lg rounded-xl border-[#EDE0D4] bg-white focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all placeholder:text-[#6B6056]/30 text-sm text-on-surface" placeholder="you@example.com" type="email" />
+                    <input
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className="w-full h-[50px] px-lg rounded-xl border-[#EDE0D4] bg-white focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all placeholder:text-[#6B6056]/30 text-sm text-on-surface"
+                      placeholder="you@example.com"
+                      type="email"
+                    />
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="block font-button text-[10px] uppercase tracking-widest text-on-surface ml-sm opacity-60">Password</label>
-                      <input className="w-full h-[50px] px-lg rounded-xl border-[#EDE0D4] bg-white focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all placeholder:text-[#6B6056]/30 text-sm text-on-surface" placeholder="8+ characters" type="password" />
+                      <input
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        className="w-full h-[50px] px-lg rounded-xl border-[#EDE0D4] bg-white focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all placeholder:text-[#6B6056]/30 text-sm text-on-surface"
+                        placeholder="8+ characters"
+                        type="password"
+                      />
                     </div>
                     <div className="space-y-1.5">
                       <label className="block font-button text-[10px] uppercase tracking-widest text-on-surface ml-sm opacity-60">Confirm</label>
-                      <input className="w-full h-[50px] px-lg rounded-xl border-[#EDE0D4] bg-white focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all placeholder:text-[#6B6056]/30 text-sm text-on-surface" placeholder="Repeat password" type="password" />
+                      <input
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        required
+                        className="w-full h-[50px] px-lg rounded-xl border-[#EDE0D4] bg-white focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all placeholder:text-[#6B6056]/30 text-sm text-on-surface"
+                        placeholder="Repeat password"
+                        type="password"
+                      />
                     </div>
                   </div>
                 </div>
 
-                <button className="w-full h-[50px] bg-primary-container text-white rounded-xl font-button text-sm ember-glow hover:scale-[1.01] active:scale-[0.99] transition-all" type="submit">
-                  Create Account
+                <button disabled={isLoading} className="w-full h-[50px] bg-primary-container text-white rounded-xl font-button text-sm ember-glow hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-70" type="submit">
+                  {isLoading ? 'Creating Account...' : 'Create Account'}
                 </button>
               </form>
             )}
@@ -167,7 +288,7 @@ export default function AuthPage() {
                 <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"></path>
                 <path d="M12 5.38c1.62 0 3.06.56 4.21 1.66l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"></path>
               </svg>
-              {isLoading ? 'Connecting...' : 'Continue with Google'}
+              Continue with Google
             </button>
 
             {/* Footer */}

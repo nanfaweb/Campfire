@@ -12,15 +12,36 @@ export async function GET(request: Request) {
     const supabase = await createClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
-      const forwardedHost = request.headers.get('x-forwarded-host') // beetween localhost and production
+      // Check if user is new to redirect to setup-profile
+      const { data: { user } } = await supabase.auth.getUser()
+      let redirectTo = next
+
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('created_at')
+          .eq('id', user.id)
+          .single()
+
+        if (profile) {
+          const createdAt = new Date(profile.created_at).getTime()
+          const now = Date.now()
+          // If created in the last 60 seconds, it's a new signup
+          if (now - createdAt < 60000) {
+            redirectTo = '/setup-profile'
+          }
+        }
+      }
+
+      const forwardedHost = request.headers.get('x-forwarded-host')
       const isLocalEnv = process.env.NODE_ENV === 'development'
+      
       if (isLocalEnv) {
-        // we can be sure that origin is localhost:3000
-        return NextResponse.redirect(`${origin}${next}`)
+        return NextResponse.redirect(`${origin}${redirectTo}`)
       } else if (forwardedHost) {
-        return NextResponse.redirect(`https://${forwardedHost}${next}`)
+        return NextResponse.redirect(`https://${forwardedHost}${redirectTo}`)
       } else {
-        return NextResponse.redirect(`${origin}${next}`)
+        return NextResponse.redirect(`${origin}${redirectTo}`)
       }
     }
   }

@@ -117,8 +117,8 @@ export default function AuthPage() {
       </section>
 
       {/* Right Side: Auth Form - Scrollable */}
-      <section className="w-full md:w-1/2 flex items-center justify-center p-md sm:p-xl bg-[#FFF8F2] overflow-y-auto h-full">
-        <div className="w-full max-w-[330px] space-y-[30px] z-10 py-10">
+      <section className="w-full md:w-1/2 flex flex-col p-md sm:p-xl bg-[#FFF8F2] overflow-y-auto h-full">
+        <div className="w-full max-w-[330px] space-y-[30px] z-10 py-10 my-auto mx-auto">
 
           {/* Wordmark */}
           <div className="flex flex-col items-center md:items-start space-y-2">

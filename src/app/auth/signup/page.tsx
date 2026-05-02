@@ -53,15 +53,15 @@ export default function AuthPage() {
 
       {/* Right Side: Auth Form - Scrollable */}
       <section className="w-full md:w-1/2 flex items-center justify-center p-md sm:p-xl bg-[#FFF8F2] overflow-y-auto h-full">
-        <div className="w-full max-w-[440px] space-y-lg z-10 py-10">
+        <div className="w-full max-w-[330px] space-y-[30px] z-10 py-10">
 
           {/* Wordmark */}
-          <div className="flex flex-col items-center md:items-start space-y-sm">
+          <div className="flex flex-col items-center md:items-start space-y-2">
             <span className="text-primary-container font-h2 text-h2 tracking-tight flex items-center gap-xs">
-              <span className="material-symbols-outlined text-5xl" style={{ fontVariationSettings: "'FILL' 1" }}>local_fire_department</span>
-              <span className="text-4xl font-extrabold font-h1 tracking-tighter text-primary-container">CampFire</span>
+              <span className="material-symbols-outlined text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>local_fire_department</span>
+              <span className="text-2xl font-extrabold font-h1 tracking-tighter text-primary-container">CampFire</span>
             </span>
-            <p className="text-on-surface-variant font-body text-body transition-all duration-300">
+            <p className="text-on-surface-variant font-body text-sm transition-all duration-300">
               {isLogin ? "Welcome back to the clearing." : "Join the clearing."}
             </p>
           </div>
@@ -76,39 +76,39 @@ export default function AuthPage() {
 
             <button
               onClick={() => setIsLogin(true)}
-              className={`relative z-10 flex-1 py-2.5 text-center text-button rounded-full transition-colors duration-300 ${isLogin ? 'text-white' : 'text-stone-500 hover:text-stone-700'}`}
+              className={`relative z-10 flex-1 py-2.5 text-center text-[12px] font-bold uppercase tracking-wider rounded-full transition-colors duration-300 ${isLogin ? 'text-white' : 'text-stone-500 hover:text-stone-700'}`}
             >
               Log In
             </button>
             <button
               onClick={() => setIsLogin(false)}
-              className={`relative z-10 flex-1 py-2.5 text-center text-button rounded-full transition-colors duration-300 ${!isLogin ? 'text-white' : 'text-stone-500 hover:text-stone-700'}`}
+              className={`relative z-10 flex-1 py-2.5 text-center text-[12px] font-bold uppercase tracking-wider rounded-full transition-colors duration-300 ${!isLogin ? 'text-white' : 'text-stone-500 hover:text-stone-700'}`}
             >
               Sign Up
             </button>
           </div>
 
           {/* Form Container with dynamic height for smooth spacing */}
-          <div className={`relative transition-all duration-500 ease-in-out ${isLogin ? 'h-[285px]' : 'h-[440px]'}`}>
+          <div className={`relative transition-all duration-500 ease-in-out ${isLogin ? 'h-[275px]' : 'h-[385px]'}`}>
             {/* Login Form */}
             {isLogin && (
-              <form className="space-y-md animate-fade-in absolute w-full top-0 left-0" onSubmit={(e) => e.preventDefault()}>
-                <div className="space-y-md">
-                  <div className="space-y-xs">
-                    <label className="block font-button text-caption text-on-surface ml-sm">Email Address</label>
-                    <input className="w-full h-14 px-lg rounded-xl border-[#EDE0D4] bg-white focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all placeholder:text-[#6B6056]/40 text-on-surface" placeholder="you@example.com" type="email" />
+              <form className="space-y-6 animate-fade-in absolute w-full top-0 left-0" onSubmit={(e) => e.preventDefault()}>
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="block font-button text-[10px] uppercase tracking-widest text-on-surface ml-sm opacity-60">Email Address</label>
+                    <input className="w-full h-[50px] px-lg rounded-xl border-[#EDE0D4] bg-white focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all placeholder:text-[#6B6056]/30 text-sm text-on-surface" placeholder="you@example.com" type="email" />
                   </div>
-                  <div className="space-y-xs">
-                    <label className="block font-button text-caption text-on-surface ml-sm">Password</label>
-                    <input className="w-full h-14 px-lg rounded-xl border-[#EDE0D4] bg-white focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all placeholder:text-[#6B6056]/40 text-on-surface" placeholder="Minimum 8 characters" type="password" />
+                  <div className="space-y-1.5">
+                    <label className="block font-button text-[10px] uppercase tracking-widest text-on-surface ml-sm opacity-60">Password</label>
+                    <input className="w-full h-[50px] px-lg rounded-xl border-[#EDE0D4] bg-white focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all placeholder:text-[#6B6056]/30 text-sm text-on-surface" placeholder="Minimum 8 characters" type="password" />
                   </div>
                 </div>
 
                 <div className="flex items-center justify-end">
-                  <button type="button" className="text-caption font-button text-[#F4845F] hover:text-primary transition-colors">Forgot Password?</button>
+                  <button type="button" className="text-[10px] font-bold uppercase tracking-widest text-[#F4845F] hover:text-primary transition-colors">Forgot Password?</button>
                 </div>
 
-                <button className="w-full h-14 bg-primary-container text-white rounded-xl font-button text-button ember-glow hover:scale-[1.01] active:scale-[0.99] transition-all" type="submit">
+                <button className="w-full h-[50px] bg-primary-container text-white rounded-xl font-button text-sm ember-glow hover:scale-[1.01] active:scale-[0.99] transition-all" type="submit">
                   Log In
                 </button>
               </form>
@@ -116,37 +116,37 @@ export default function AuthPage() {
 
             {/* Registration Form */}
             {!isLogin && (
-              <form className="space-y-md animate-fade-in absolute w-full top-0 left-0" onSubmit={(e) => e.preventDefault()}>
-                <div className="grid grid-cols-1 gap-md">
-                  <div className="space-y-xs">
-                    <label className="block font-button text-caption text-on-surface ml-sm">Full Name</label>
-                    <input className="w-full h-14 px-lg rounded-xl border-[#EDE0D4] bg-white focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all placeholder:text-[#6B6056]/40 text-on-surface" placeholder="e.g. John Smith" type="text" />
+              <form className="space-y-6 animate-fade-in absolute w-full top-0 left-0" onSubmit={(e) => e.preventDefault()}>
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="block font-button text-[10px] uppercase tracking-widest text-on-surface ml-sm opacity-60">Full Name</label>
+                    <input className="w-full h-[50px] px-lg rounded-xl border-[#EDE0D4] bg-white focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all placeholder:text-[#6B6056]/30 text-sm text-on-surface" placeholder="e.g. John Smith" type="text" />
                   </div>
-                  <div className="space-y-xs">
-                    <label className="block font-button text-caption text-on-surface ml-sm">Username</label>
+                  <div className="space-y-1.5">
+                    <label className="block font-button text-[10px] uppercase tracking-widest text-on-surface ml-sm opacity-60">Username</label>
                     <div className="relative">
-                      <span className="absolute left-lg top-1/2 -translate-y-1/2 text-stone-400">@</span>
-                      <input className="w-full h-14 pl-xl pr-lg rounded-xl border-[#EDE0D4] bg-white focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all placeholder:text-[#6B6056]/40 text-on-surface" placeholder="e.g. wanderer_42" type="text" />
+                      <span className="absolute left-lg top-1/2 -translate-y-1/2 text-stone-400 text-sm">@</span>
+                      <input className="w-full h-[50px] pl-xl pr-lg rounded-xl border-[#EDE0D4] bg-white focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all placeholder:text-[#6B6056]/30 text-sm text-on-surface" placeholder="e.g. wanderer_42" type="text" />
                     </div>
                   </div>
-                  <div className="space-y-xs">
-                    <label className="block font-button text-caption text-on-surface ml-sm">Email Address</label>
-                    <input className="w-full h-14 px-lg rounded-xl border-[#EDE0D4] bg-white focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all placeholder:text-[#6B6056]/40 text-on-surface" placeholder="you@example.com" type="email" />
+                  <div className="space-y-1.5">
+                    <label className="block font-button text-[10px] uppercase tracking-widest text-on-surface ml-sm opacity-60">Email Address</label>
+                    <input className="w-full h-[50px] px-lg rounded-xl border-[#EDE0D4] bg-white focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all placeholder:text-[#6B6056]/30 text-sm text-on-surface" placeholder="you@example.com" type="email" />
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-md">
-                    <div className="space-y-xs">
-                      <label className="block font-button text-caption text-on-surface ml-sm">Password</label>
-                      <input className="w-full h-14 px-lg rounded-xl border-[#EDE0D4] bg-white focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all placeholder:text-[#6B6056]/40 text-on-surface" placeholder="8+ characters" type="password" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="block font-button text-[10px] uppercase tracking-widest text-on-surface ml-sm opacity-60">Password</label>
+                      <input className="w-full h-[50px] px-lg rounded-xl border-[#EDE0D4] bg-white focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all placeholder:text-[#6B6056]/30 text-sm text-on-surface" placeholder="8+ characters" type="password" />
                     </div>
-                    <div className="space-y-xs">
-                      <label className="block font-button text-caption text-on-surface ml-sm">Confirm</label>
-                      <input className="w-full h-14 px-lg rounded-xl border-[#EDE0D4] bg-white focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all placeholder:text-[#6B6056]/40 text-on-surface" placeholder="Repeat password" type="password" />
+                    <div className="space-y-1.5">
+                      <label className="block font-button text-[10px] uppercase tracking-widest text-on-surface ml-sm opacity-60">Confirm</label>
+                      <input className="w-full h-[50px] px-lg rounded-xl border-[#EDE0D4] bg-white focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all placeholder:text-[#6B6056]/30 text-sm text-on-surface" placeholder="Repeat password" type="password" />
                     </div>
                   </div>
                 </div>
 
-                <button className="w-full h-14 mt-2 bg-primary-container text-white rounded-xl font-button text-button ember-glow hover:scale-[1.01] active:scale-[0.99] transition-all" type="submit">
+                <button className="w-full h-[50px] bg-primary-container text-white rounded-xl font-button text-sm ember-glow hover:scale-[1.01] active:scale-[0.99] transition-all" type="submit">
                   Create Account
                 </button>
               </form>
@@ -154,14 +154,14 @@ export default function AuthPage() {
           </div>
 
           {/* Social & Footer Section - Flowing naturally below with consistent spacing */}
-          <div className="flex flex-col gap-8">
+          <div className="flex flex-col space-y-[30px]">
             {/* OAuth */}
             <button
               onClick={handleGoogleSignIn}
               disabled={isLoading}
-              className="w-full h-14 flex items-center justify-center gap-md rounded-xl border border-[#EDE0D4] bg-white hover:bg-surface-container-lowest transition-all text-on-surface font-semibold text-button shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full h-[50px] flex items-center justify-center gap-md rounded-xl border border-[#EDE0D4] bg-white hover:bg-surface-container-lowest transition-all text-on-surface font-semibold text-sm shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <svg className="w-5 h-5" viewBox="0 0 24 24">
+              <svg className="w-4 h-4" viewBox="0 0 24 24">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
                 <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>
                 <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"></path>
@@ -171,9 +171,9 @@ export default function AuthPage() {
             </button>
 
             {/* Footer */}
-            <p className="text-center font-body text-body text-[#6B6056]">
+            <p className="text-center font-body text-xs text-[#6B6056]">
               {isLogin ? "New to CampFire? " : "Already have an account? "}
-              <button onClick={() => setIsLogin(!isLogin)} className="text-primary-container font-h3 text-h3 ml-xs hover:underline decoration-2 underline-offset-4">
+              <button onClick={() => setIsLogin(!isLogin)} className="text-primary-container font-bold ml-xs hover:underline decoration-2 underline-offset-4">
                 {isLogin ? "Sign up" : "Log in"}
               </button>
             </p>
@@ -186,13 +186,13 @@ export default function AuthPage() {
       </div>
 
       {/* App Identity Anchors */}
-      <footer className="fixed bottom-8 right-8 hidden lg:block opacity-40 hover:opacity-100 transition-opacity">
-        <div className="flex items-center gap-sm text-on-surface-variant font-caption">
+      <footer className="fixed bottom-8 left-8 hidden lg:block opacity-40 hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-sm text-white/80 font-caption">
           <span>© 2026 CampFire Social</span>
-          <span className="w-1 h-1 rounded-full bg-outline-variant"></span>
-          <Link href="#" className="hover:text-primary">Privacy</Link>
-          <span className="w-1 h-1 rounded-full bg-outline-variant"></span>
-          <Link href="#" className="hover:text-primary">Terms</Link>
+          <span className="w-1 h-1 rounded-full bg-white/40"></span>
+          <Link href="#" className="hover:text-white underline decoration-white/20 underline-offset-4">Privacy</Link>
+          <span className="w-1 h-1 rounded-full bg-white/40"></span>
+          <Link href="#" className="hover:text-white underline decoration-white/20 underline-offset-4">Terms</Link>
         </div>
       </footer>
     </main>

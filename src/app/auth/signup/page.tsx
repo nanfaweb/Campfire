@@ -117,7 +117,7 @@ export default function AuthPage() {
       </section>
 
       {/* Right Side: Auth Form - Scrollable */}
-      <section className="w-full md:w-1/2 flex flex-col p-md sm:p-xl bg-[#FFF8F2] overflow-y-auto h-full">
+      <section className="w-full md:w-1/2 flex flex-col p-md sm:p-xl bg-[#FFF8F2] overflow-y-auto h-full scroll-smooth custom-scrollbar">
         <div className="w-full max-w-[330px] space-y-[30px] z-10 py-10 my-auto mx-auto">
 
           {/* Wordmark */}
@@ -153,15 +153,17 @@ export default function AuthPage() {
             </button>
           </div>
 
-          {authError && (
-            <div className="bg-[#FFEFEF] border border-[#FFD6D6] text-[#D84C4C] text-xs font-semibold p-3.5 rounded-xl animate-fade-in flex items-center gap-2">
-              <span className="material-symbols-outlined text-[18px]">error</span>
-              <span>{authError}</span>
-            </div>
-          )}
+          {/* Form and Error Group */}
+          <div className="flex flex-col space-y-4">
+            {authError && (
+              <div className="bg-[#FFEFEF] border border-[#FFD6D6] text-[#D84C4C] text-[11px] font-semibold p-3 rounded-xl animate-fade-in flex items-center gap-2 shadow-sm">
+                <span className="material-symbols-outlined text-[16px]">error</span>
+                <span>{authError}</span>
+              </div>
+            )}
 
-          {/* Form Container with dynamic height for smooth spacing */}
-          <div className={`relative transition-all duration-500 ease-in-out ${isLogin ? 'h-[275px]' : 'h-[385px]'}`}>
+            {/* Form Container with dynamic height for smooth spacing */}
+            <div className={`relative transition-all duration-500 ease-in-out ${isLogin ? 'h-[275px]' : 'h-[385px]'}`}>
             {/* Login Form */}
             {isLogin && (
               <form className="space-y-6 animate-fade-in absolute w-full top-0 left-0" onSubmit={handleLogin}>
@@ -273,6 +275,7 @@ export default function AuthPage() {
               </form>
             )}
           </div>
+        </div>
 
           {/* Social & Footer Section - Flowing naturally below with consistent spacing */}
           <div className="flex flex-col space-y-[30px]">

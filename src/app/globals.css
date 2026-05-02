@@ -139,3 +139,16 @@ body {
 @utility animate-fade-in {
   animation: fadeIn 0.4s ease-out forwards;
 }
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #EDE0D4;
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #D8C4B6;
+}

@@ -199,3 +199,43 @@ body {
   background-origin: border-box;
   background-clip: padding-box, border-box;
 }
+
+@utility material-symbols-filled {
+  font-family: 'Material Symbols Outlined';
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  display: inline-block;
+  vertical-align: middle;
+  line-height: 1;
+}
+
+@utility ambient-shadow {
+  box-shadow: 0 4px 24px -4px hsla(25, 30%, 20%, 0.08);
+}
+
+@utility chat-scroll {
+  &::-webkit-scrollbar { width: 4px; }
+  &::-webkit-scrollbar-thumb { background-color: #f1dfd0; border-radius: 10px; }
+}
+
+@utility gradient-border-mask {
+  position: relative;
+  background: #ffffff;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  &::after {
+    content: '';
+    position: absolute;
+    top: -1px; bottom: -1px; left: -1px; right: -1px;
+    background: linear-gradient(to right, #ff6b2b1a, #ff3cac1a);
+    z-index: -1;
+    border-radius: inherit;
+  }
+}
+
+@utility animation-delay-150 {
+  animation-delay: -0.15s;
+}
+
+@utility animation-delay-300 {
+  animation-delay: -0.3s;
+}

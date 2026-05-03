@@ -3,38 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 
-// ── Small utility components ──────────────────────────────────────────────────
-interface IconProps {
-  name: string;
-  fill?: boolean;
-  size?: number;
-  className?: string;
-}
-
-function Icon({ name, fill = false, size = 24, className = "" }: IconProps) {
-  return (
-    <span
-      className={`material-symbols-outlined select-none ${className}`}
-      style={{
-        fontSize: size,
-        fontVariationSettings: fill ? "'FILL' 1" : "'FILL' 0",
-      }}
-    >
-      {name}
-    </span>
-  );
-}
-
-// ── Sidebar nav items ─────────────────────────────────────────────────────────
-const NAV_ITEMS = [
-  { icon: "home", label: "HOME" },
-  { icon: "search", label: "SEARCH" },
-  { icon: "explore", label: "EXPLORE" },
-  { icon: "mail", label: "MESSAGES" },
-  { icon: "notifications", label: "NOTIFICATIONS" },
-  { icon: "local_fire_department", label: "MARSHMALLOW" },
-  { icon: "settings", label: "SETTINGS", active: true },
-];
+import { Icon } from "@/components/Icon";
 
 export default function SettingsPage() {
   const [darkMode, setDarkMode] = useState(false);
@@ -43,46 +12,6 @@ export default function SettingsPage() {
 
   return (
     <>
-      <div className="flex min-h-screen bg-[#FFF8F2] font-body text-[#32231B]">
-        
-        {/* ── Left Sidebar ─────────────────────────────────────── */}
-        <nav className="fixed left-0 top-0 h-screen w-64 bg-white/40 backdrop-blur-md border-r border-orange-50/50 flex flex-col z-50">
-          <div className="py-8 px-8 flex flex-col">
-            <Link href="/home" className="text-3xl font-black tracking-tighter text-[#A83900]">
-              CampFire
-            </Link>
-            <span className="text-[10px] font-bold text-[#A89F9A] uppercase tracking-widest mt-1">
-              Stay Warm
-            </span>
-          </div>
-
-          <div className="flex-1 flex flex-col gap-1 mt-4 px-2">
-            {NAV_ITEMS.map(({ icon, label, active }) => (
-              <Link
-                key={label}
-                href={label === "HOME" ? "/home" : "#"}
-                className={`flex items-center gap-4 px-6 py-3.5 transition-all duration-200 rounded-xl mx-2 ${
-                  active
-                    ? "text-[#A83900] font-bold bg-[#FFF1E6] shadow-sm"
-                    : "text-[#6B6056] font-semibold hover:text-[#FF6B2B] hover:bg-[#FFF1E6]/50"
-                }`}
-              >
-                <Icon name={icon} fill={active} size={22} />
-                <span className="text-[12px] tracking-widest">{label}</span>
-              </Link>
-            ))}
-          </div>
-
-          {/* New Spark Button */}
-          <div className="p-6 mt-auto">
-            <button className="w-full flex items-center justify-center gap-2 bg-[#843615] text-white py-4 rounded-xl font-bold shadow-md hover:bg-[#6b2c11] transition-colors ember-glow">
-              <Icon name="add" size={20} />
-              New Spark
-            </button>
-          </div>
-        </nav>
-
-        {/* ── Main Content ─────────────────────────────────────── */}
         <main className="ml-64 flex-1 flex flex-col min-h-screen">
           {/* Top Header */}
           <header className="h-20 flex justify-end items-center px-10 gap-6">
@@ -219,7 +148,6 @@ export default function SettingsPage() {
             </div>
           </div>
         </main>
-      </div>
     </>
   );
 }

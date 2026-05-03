@@ -22,71 +22,8 @@ const INLINE_STYLES = `
 
 // ── Small utility components ──────────────────────────────────────────────────
 
-interface IconProps {
-  name: string;
-  fill?: boolean;
-  size?: number;
-  className?: string;
-}
-
-function Icon({ name, fill = false, size = 24, className = "" }: IconProps) {
-  return (
-    <span
-      className={`material-symbols-outlined select-none ${className}`}
-      style={{
-        fontSize: size,
-        fontVariationSettings: fill ? "'FILL' 1" : "'FILL' 0",
-      }}
-    >
-      {name}
-    </span>
-  );
-}
-
-interface AvatarProps {
-  src: string;
-  alt?: string;
-  size?: number;
-  ring?: boolean;
-}
-
-function Avatar({ src, alt = "", size = 40, ring = false }: AvatarProps) {
-  return (
-    <div
-      className={`flex-shrink-0 rounded-full overflow-hidden bg-orange-50 ${ring ? "p-[3px] story-ring" : ""}`}
-      style={{ width: size, height: size }}
-    >
-      {ring ? (
-        <div className="bg-white p-0.5 rounded-full w-full h-full">
-          <img
-            src={src}
-            alt={alt}
-            className="rounded-full w-full h-full object-cover"
-          />
-        </div>
-      ) : (
-        <img src={src} alt={alt} className="w-full h-full object-cover" />
-      )}
-    </div>
-  );
-}
-
-// ── Sidebar nav items ─────────────────────────────────────────────────────────
-interface NavItem {
-  icon: string;
-  label: string;
-  active?: boolean;
-}
-
-const NAV_ITEMS: NavItem[] = [
-  { icon: "home", label: "Home", active: true },
-  { icon: "search", label: "Search" },
-  { icon: "explore", label: "Explore" },
-  { icon: "mail", label: "Messages" },
-  { icon: "favorite", label: "Notifications" },
-  { icon: "cloud", label: "Marshmallow" },
-  { icon: "settings", label: "Settings" },
-];
+import { Icon } from "@/components/Icon";
+import { Avatar } from "@/components/Avatar";
 
 // ── Post card ─────────────────────────────────────────────────────────────────
 
@@ -241,51 +178,6 @@ export default function CampFirePage() {
   return (
     <>
       <style>{INLINE_STYLES}</style>
-
-      <div className="flex min-h-screen bg-[#FFF8F2]">
-        {/* ── Left Sidebar ─────────────────────────────────────── */}
-        <nav className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-orange-50 flex flex-col overflow-y-auto z-50">
-          <div
-            className="py-8 px-6 text-2xl font-black tracking-tight gradient-text"
-            style={{ fontFamily: "Space Grotesk, sans-serif" }}
-          >
-            CampFire
-          </div>
-
-          <div className="flex-1 flex flex-col gap-0.5">
-            {NAV_ITEMS.map(({ icon, label, active }) => (
-              <a
-                key={label}
-                href="#"
-                className={`flex items-center gap-4 px-6 py-3.5 transition-all duration-150 rounded-r-full mr-4 ${
-                  active
-                    ? "text-[#FF6B2B] font-bold bg-orange-50"
-                    : "text-zinc-500 hover:text-[#FF6B2B] hover:bg-orange-50/60"
-                }`}
-                style={{ fontFamily: "Space Grotesk, sans-serif" }}
-              >
-                <Icon name={icon} fill={!!active} size={22} />
-                <span className="text-base">{label}</span>
-              </a>
-            ))}
-          </div>
-
-          {/* Profile */}
-          <div className="border-t border-orange-50 py-5 px-6">
-            <a
-              href="#"
-              className="flex items-center gap-3 hover:opacity-80 transition-opacity"
-            >
-              <Avatar src={currentUser.avatarUrl} alt="Profile" size={36} />
-              <span
-                className="text-sm font-bold text-zinc-700"
-                style={{ fontFamily: "Space Grotesk, sans-serif" }}
-              >
-                {currentUser.username}
-              </span>
-            </a>
-          </div>
-        </nav>
 
         {/* ── Feed ─────────────────────────────────────────────── */}
         <main className="ml-64 mr-80 flex-1 pt-8 px-8 max-w-2xl">
@@ -479,7 +371,6 @@ export default function CampFirePage() {
         <button className="fixed bottom-8 right-8 w-14 h-14 bg-[#a83900] text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-50">
           <Icon name="add" size={28} />
         </button>
-      </div>
     </>
   );
 }

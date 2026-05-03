@@ -1,0 +1,143 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800;900&family=Be+Vietnam+Pro:wght@100;200;300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --surface-container-highest: #f1dfd0;
+  --on-tertiary-fixed: #1e1b17;
+  --secondary-container: #ff52b0;
+  --on-error-container: #93000a;
+  --surface-container-low: #fff1e7;
+  --on-primary: #ffffff;
+  --on-surface: #231a11;
+  --primary: #802a00;
+  --primary-fixed-dim: #ffb59a;
+  --on-surface-variant: #58423a;
+  --on-secondary-container: #5f003b;
+  --surface-container-high: #f7e5d6;
+  --on-secondary: #ffffff;
+  --on-background: #231a11;
+  --on-primary-container: #ffcebc;
+  --background: #fff8f4;
+  --surface: #fff8f4;
+  --surface-dim: #e9d7c8;
+  --primary-container: #a83900;
+  --inverse-primary: #ffb59a;
+  --error-container: #ffdad6;
+  --surface-tint: #a83900;
+  --accent-pink: #ff3cac;
+  --outline: #8c7168;
+  --on-secondary-fixed: #3d0024;
+  --tertiary-fixed-dim: #ccc5bf;
+  --surface-variant: #f1dfd0;
+  --on-primary-fixed: #380d00;
+  --on-error: #ffffff;
+  --on-secondary-fixed-variant: #8b0059;
+  --surface-container: #fdebdc;
+  --primary-fixed: #ffdbce;
+  --secondary-fixed-dim: #ffafd1;
+  --on-tertiary: #ffffff;
+  --surface-bright: #fff8f4;
+  --tertiary-fixed: #e8e1db;
+  --secondary: #b50675;
+  --inverse-surface: #392e25;
+  --tertiary-container: #625e59;
+  --on-tertiary-fixed-variant: #4a4642;
+  --tertiary: #4a4642;
+  --error: #ba1a1a;
+  --on-primary-fixed-variant: #802a00;
+  --surface-container-lowest: #ffffff;
+  --primary-orange: #ff6b2b;
+  --secondary-fixed: #ffd8e6;
+  --on-tertiary-container: #ded8d1;
+  --inverse-on-surface: #ffeee0;
+  --outline-warm: #8d7167;
+  --outline-variant: #e0c0b5;
+}
+
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  display: inline-block;
+  vertical-align: middle;
+  line-height: 1;
+}
+
+.material-symbols-filled {
+  font-family: 'Material Symbols Outlined';
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  display: inline-block;
+  vertical-align: middle;
+  line-height: 1;
+}
+
+/* Card gradient border effect */
+.card-gradient-border {
+  position: relative;
+  background: #ffffff;
+  border-radius: 16px;
+}
+.card-gradient-border::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  background: linear-gradient(135deg, rgba(255, 107, 43, 0.1), rgba(255, 60, 172, 0.1));
+  border-radius: 17px;
+  z-index: -1;
+}
+
+/* Shadows */
+.golden-shadow {
+  box-shadow: 0 10px 30px -5px hsla(25, 30%, 20%, 0.08);
+}
+.ambient-shadow {
+  box-shadow: 0 4px 24px -4px hsla(25, 30%, 20%, 0.08);
+}
+
+/* Toggle */
+.custom-toggle:checked + .toggle-dot {
+  transform: translateX(100%);
+  background-color: #ffffff;
+}
+.custom-toggle:checked ~ .toggle-bg {
+  background-color: #802a00;
+}
+
+/* Chat scrollbar */
+.chat-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.chat-scroll::-webkit-scrollbar-thumb {
+  background-color: #f1dfd0;
+  border-radius: 10px;
+}
+
+/* Gradient border for chat input */
+.gradient-border-mask {
+  position: relative;
+  background: #ffffff;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+.gradient-border-mask::after {
+  content: '';
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  left: -1px;
+  right: -1px;
+  background: linear-gradient(to right, #ff6b2b1a, #ff3cac1a);
+  z-index: -1;
+  border-radius: inherit;
+}
+
+/* Bounce animation delays for typing dots */
+.animation-delay-150 {
+  animation-delay: -0.15s;
+}
+.animation-delay-300 {
+  animation-delay: -0.3s;
+}

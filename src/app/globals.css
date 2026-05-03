@@ -47,6 +47,8 @@
   --color-secondary-container: #feb246;
   --color-inverse-primary: #ffb59a;
   --color-primary-container: #ff6b2b;
+  --color-primary-orange: #ff6b2b;
+  --color-accent-pink: #ff3cac;
   --color-on-tertiary-fixed: #390b00;
 
   --spacing-unit: 8px;
@@ -239,3 +241,21 @@ body {
 @utility animation-delay-300 {
   animation-delay: -0.3s;
 }
+
+@utility font-body-md {
+  font-family: 'Be Vietnam Pro', sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+@utility golden-shadow {
+  box-shadow: 0 10px 30px -5px hsla(25, 30%, 20%, 0.08);
+}
+
+@utility card-gradient-border {
+  position: relative;
+  background: #ffffff;
+  border-radius: 16px;
+}
+

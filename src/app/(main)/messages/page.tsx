@@ -1,5 +1,4 @@
 // app/messages/page.tsx
-import Image from 'next/image';
 
 /* ── Static data ── */
 const conversations = [

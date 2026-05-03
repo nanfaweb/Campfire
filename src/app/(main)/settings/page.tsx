@@ -138,7 +138,7 @@ export default function SettingsPage() {
                       Reset Defaults
                     </button>
                     <button className="px-6 py-3 rounded-xl bg-[#843615] text-white font-bold text-sm flex items-center gap-2 hover:bg-[#6b2c11] transition-colors shadow-md">
-                      <Icon name="temp_preferences_custom" size={18} />
+                      <Icon name="tune" size={18} />
                       Save Changes
                     </button>
                   </div>

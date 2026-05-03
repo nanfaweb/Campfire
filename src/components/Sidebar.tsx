@@ -7,7 +7,6 @@ import { Icon } from "./Icon";
 
 const NAV_ITEMS = [
   { icon: "home", label: "HOME", href: "/home" },
-  { icon: "search", label: "SEARCH", href: "/explore" },
   { icon: "explore", label: "EXPLORE", href: "/explore" },
   { icon: "mail", label: "MESSAGES", href: "/messages" },
   { icon: "notifications", label: "NOTIFICATIONS", href: "/notifications" },

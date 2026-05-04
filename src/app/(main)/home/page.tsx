@@ -3,9 +3,8 @@
 // server-side, then passes them to the interactive HomeClient.
 
 import { redirect } from "next/navigation";
-import { getCurrentProfile } from "@/lib/queries/profiles";
+import { getCurrentProfile, getFriendSuggestions, getFriends } from "@/lib/queries/profiles";
 import { getFeedPosts } from "@/lib/queries/posts";
-import { getFriendSuggestions } from "@/lib/queries/profiles";
 import HomeClient from "@/app/(main)/home/HomeClient";
 
 export default async function HomePage() {
@@ -16,9 +15,10 @@ export default async function HomePage() {
   }
 
   // 2. Parallel data fetch for performance
-  const [posts, suggestions] = await Promise.all([
+  const [posts, suggestions, friends] = await Promise.all([
     getFeedPosts(profile.id),
     getFriendSuggestions(profile.id, 5),
+    getFriends(profile.id),
   ]);
 
   // 3. Render interactive client component with server-fetched data
@@ -27,6 +27,7 @@ export default async function HomePage() {
       currentUser={profile}
       initialPosts={posts}
       suggestions={suggestions}
+      friends={friends}
     />
   );
 }

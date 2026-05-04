@@ -95,3 +95,33 @@ export async function getRecommendedUsers(
 ): Promise<FriendSuggestion[]> {
   return getFriendSuggestions(currentUserId, limit);
 }
+
+/**
+ * Fetch accepted friends for the current user to display in the Stories bar.
+ */
+export async function getFriends(currentUserId: string): Promise<Profile[]> {
+  const supabase = await createClient();
+
+  try {
+    const { data: friendships, error } = await supabase
+      .from("friendships")
+      .select("*, requester:profiles!requester_id(*), addressee:profiles!addressee_id(*)")
+      .eq("status", "accepted")
+      .or(`requester_id.eq.${currentUserId},addressee_id.eq.${currentUserId}`);
+
+    if (error) {
+      console.error("[getFriends] error:", error.message);
+      return [];
+    }
+
+    return (friendships || []).map((f) => {
+      if (f.requester_id === currentUserId) {
+        return f.addressee as Profile;
+      }
+      return f.requester as Profile;
+    });
+  } catch (err) {
+    console.error("[getFriends] unexpected error:", err);
+    return [];
+  }
+}

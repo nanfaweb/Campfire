@@ -188,6 +188,7 @@ interface HomeClientProps {
   currentUser: Profile;
   initialPosts: FeedPost[];
   suggestions: FriendSuggestion[];
+  friends?: Profile[];
 }
 
 // ── Main Component ───────────────────────────────────────────────────────────
@@ -196,6 +197,7 @@ export default function HomeClient({
   currentUser,
   initialPosts,
   suggestions,
+  friends = [],
 }: HomeClientProps) {
   const [marshmallowMsg, setMarshmallowMsg] = useState("");
   const [marshmallowLoading, setMarshmallowLoading] = useState(false);
@@ -227,7 +229,7 @@ export default function HomeClient({
 
       {/* ── Feed ──────────────────────────────────────────────── */}
       <main className="ml-64 mr-80 flex-1 pt-8 px-8 max-w-2xl">
-        {/* Stories (mock — no stories table in DB) */}
+        {/* Stories / Active Friends */}
         <div className="flex gap-5 overflow-x-auto pb-8 no-scrollbar">
           <div className="flex-shrink-0 flex flex-col items-center gap-2">
             <Avatar
@@ -243,6 +245,22 @@ export default function HomeClient({
               Your Story
             </span>
           </div>
+          {friends.map(friend => (
+            <div key={friend.id} className="flex-shrink-0 flex flex-col items-center gap-2">
+              <Avatar
+                src={friend.avatar_url ?? `https://api.dicebear.com/7.x/thumbs/svg?seed=${friend.username}`}
+                alt={friend.username}
+                size={60}
+                ring
+              />
+              <span
+                className="text-[10px] tracking-widest uppercase text-zinc-600 font-bold"
+                style={{ fontFamily: "Space Grotesk, sans-serif" }}
+              >
+                {friend.username}
+              </span>
+            </div>
+          ))}
         </div>
 
         {/* Marshmallow chip */}

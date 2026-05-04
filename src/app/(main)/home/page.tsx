@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/queries/profiles";
 import { getFeedPosts } from "@/lib/queries/posts";
 import { getFriendSuggestions } from "@/lib/queries/profiles";
-import HomeClient from "./HomeClient";
+import HomeClient from "@/app/(main)/home/HomeClient";
 
 export default async function HomePage() {
   // 1. Auth gate — redirect if not logged in

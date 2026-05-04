@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/queries/profiles";
 import { getNotifications } from "@/lib/queries/notifications";
-import NotificationsClient from "./NotificationsClient";
+import NotificationsClient from "@/app/(main)/notifications/NotificationsClient";
 
 export default async function NotificationsPage() {
   const profile = await getCurrentProfile();

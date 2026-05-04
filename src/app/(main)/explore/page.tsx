@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentProfile, getRecommendedUsers } from "@/lib/queries/profiles";
 import { getExplorePosts } from "@/lib/queries/posts";
-import ExploreClient from "./ExploreClient";
+import ExploreClient from "@/app/(main)/explore/ExploreClient";
 
 export default async function ExplorePage() {
   const profile = await getCurrentProfile();

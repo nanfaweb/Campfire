@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/queries/profiles";
 import { getOrCreateSession, getChatbotMessages } from "@/lib/queries/chatbot";
-import MarshmallowClient from "./MarshmallowClient";
+import MarshmallowClient from "@/app/(main)/marshmallow/MarshmallowClient";
 
 export default async function MarshmallowPage() {
   const profile = await getCurrentProfile();

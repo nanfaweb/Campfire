@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/queries/profiles";
 import { getConversations } from "@/lib/queries/messages";
-import MessagesClient from "./MessagesClient";
+import MessagesClient from "@/app/(main)/messages/MessagesClient";
 
 export default async function MessagesPage() {
   const profile = await getCurrentProfile();

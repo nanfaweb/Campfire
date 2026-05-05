@@ -76,7 +76,7 @@ function PostCard({
       <div className="p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Avatar
-            src={post.author.avatar_url ?? ""}
+            src={post.author.avatar_url}
             alt={post.author.username}
             size={40}
           />
@@ -233,7 +233,7 @@ export default function HomeClient({
         <div className="flex gap-5 overflow-x-auto pb-8 no-scrollbar">
           <div className="flex-shrink-0 flex flex-col items-center gap-2">
             <Avatar
-              src={currentUser.avatar_url ?? ""}
+              src={currentUser.avatar_url}
               alt="Your Story"
               size={60}
               ring
@@ -248,7 +248,7 @@ export default function HomeClient({
           {friends.map(friend => (
             <div key={friend.id} className="flex-shrink-0 flex flex-col items-center gap-2">
               <Avatar
-                src={friend.avatar_url ?? `https://api.dicebear.com/7.x/thumbs/svg?seed=${friend.username}`}
+                src={friend.avatar_url}
                 alt={friend.username}
                 size={60}
                 ring

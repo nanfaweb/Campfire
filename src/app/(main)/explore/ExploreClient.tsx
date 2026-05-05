@@ -5,6 +5,7 @@
 import React, { useState } from "react";
 import type { FeedPost, FriendSuggestion } from "@/types/database";
 import { createClient } from "@/utils/supabase/client";
+import { Avatar } from "@/components/Avatar";
 
 interface ExploreClientProps {
   posts: FeedPost[];
@@ -136,14 +137,13 @@ export default function ExploreClient({
                 key={user.id}
                 className="bg-white p-6 rounded-2xl shadow-[0_4px_20px_-2px_hsla(25,30%,20%,0.08)] border border-[rgba(255,107,43,0.1)] flex flex-col items-center text-center group"
               >
-                <div className="w-24 h-24 rounded-full p-[3px] bg-gradient-to-tr from-[#ff6b2b] to-[#ff3cac] mb-4">
-                  <div className="w-full h-full rounded-full border-2 border-white overflow-hidden bg-[#fdebdc]">
-                    <img
-                      src={user.avatar_url ?? `https://api.dicebear.com/7.x/thumbs/svg?seed=${user.username}`}
-                      alt={user.username}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
+                <div className="mb-4">
+                  <Avatar
+                    src={user.avatar_url}
+                    alt={user.username}
+                    size={96}
+                    ring
+                  />
                 </div>
                 <h4
                   className="font-bold text-base text-[#231a11]"
@@ -205,13 +205,11 @@ export default function ExploreClient({
                 )}
                 <div className="p-6">
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="w-8 h-8 rounded-full overflow-hidden bg-[#fdebdc]">
-                      <img
-                        src={post.author.avatar_url ?? ""}
-                        alt={post.author.username}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
+                    <Avatar
+                      src={post.author.avatar_url}
+                      alt={post.author.username}
+                      size={32}
+                    />
                     <span
                       className="font-bold text-sm text-[#231a11]"
                       style={{ fontFamily: "Space Grotesk" }}

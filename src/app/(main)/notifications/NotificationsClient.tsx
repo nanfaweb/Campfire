@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import type { Notification } from "@/types/database";
 import { createClient } from "@/utils/supabase/client";
+import { Avatar } from "@/components/Avatar";
 
 interface NotificationsClientProps {
   initialNotifications: Notification[];
@@ -90,19 +91,11 @@ export default function NotificationsClient({
                     }`}
                   >
                     <div className="relative shrink-0 mt-1">
-                      {notif.actor?.avatar_url ? (
-                        <img
-                          src={notif.actor.avatar_url}
-                          alt="Actor"
-                          className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded-full bg-zinc-100 flex items-center justify-center border-2 border-white shadow-sm">
-                          <span className="material-symbols-outlined text-zinc-400">
-                            {icon.name}
-                          </span>
-                        </div>
-                      )}
+                      <Avatar
+                        src={notif.actor?.avatar_url}
+                        alt={notif.actor?.username || "Actor"}
+                        size={48}
+                      />
                       <div
                         className={`absolute -bottom-1 -right-1 text-white rounded-full w-6 h-6 flex items-center justify-center border-2 border-white ${icon.bg}`}
                       >

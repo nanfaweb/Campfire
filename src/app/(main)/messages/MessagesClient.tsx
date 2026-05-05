@@ -4,6 +4,7 @@
 
 import React, { useState, useEffect } from "react";
 import type { ConversationPreview, DirectMessage, Profile } from "@/types/database";
+import { Avatar } from "@/components/Avatar";
 
 interface MessagesClientProps {
   initialConversations: ConversationPreview[];
@@ -157,13 +158,10 @@ export default function MessagesClient({
                     }`}
                   >
                     <div className="relative shrink-0">
-                      <img
-                        src={
-                          c.participant.avatar_url ??
-                          `https://api.dicebear.com/7.x/thumbs/svg?seed=${c.participant.username}`
-                        }
+                      <Avatar
+                        src={c.participant.avatar_url}
                         alt={c.participant.username}
-                        className="w-12 h-12 rounded-full object-cover border-2 border-orange-100 shadow-sm"
+                        size={48}
                       />
                       {c.unread_count > 0 && (
                         <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
@@ -203,13 +201,10 @@ export default function MessagesClient({
             {/* Chat header */}
             <header className="px-6 py-4 bg-white border-b border-orange-50 flex items-center justify-between shadow-sm">
               <div className="flex items-center gap-3">
-                <img
-                  src={
-                    activeConversation.participant.avatar_url ??
-                    `https://api.dicebear.com/7.x/thumbs/svg?seed=${activeConversation.participant.username}`
-                  }
+                <Avatar
+                  src={activeConversation.participant.avatar_url}
                   alt={activeConversation.participant.username}
-                  className="w-10 h-10 rounded-full object-cover border border-orange-100"
+                  size={40}
                 />
                 <div>
                   <h3 className="font-bold text-zinc-900 font-[Space_Grotesk]">

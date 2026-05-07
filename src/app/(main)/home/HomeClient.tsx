@@ -445,10 +445,6 @@ export default function HomeClient({
         </div>
       </aside>
 
-      {/* FAB */}
-      <button className="fixed bottom-8 right-8 w-14 h-14 bg-[#a83900] text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-50">
-        <Icon name="add" size={28} />
-      </button>
     </>
   );
 }

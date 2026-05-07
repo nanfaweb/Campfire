@@ -1,12 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Icon";
 import type { Profile } from "@/types/database";
 import { createClient } from "@/utils/supabase/client";
 
 export default function SettingsClient({ profile }: { profile: Profile }) {
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [formData, setFormData] = useState({
     displayName: profile.display_name || "",
     bio: profile.bio || "",
@@ -14,6 +16,7 @@ export default function SettingsClient({ profile }: { profile: Profile }) {
   });
 
   const supabase = createClient();
+  const router = useRouter();
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -33,6 +36,26 @@ export default function SettingsClient({ profile }: { profile: Profile }) {
       alert("Failed to save settings.");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      const response = await fetch("/api/logout", { method: "POST" });
+      if (!response.ok) {
+        throw new Error("Failed to log out");
+      }
+
+      // Ensure browser auth state is cleared as well.
+      await supabase.auth.signOut();
+      router.push("/signup");
+      router.refresh();
+    } catch (e) {
+      console.error(e);
+      alert("Failed to log out. Please try again.");
+    } finally {
+      setIsLoggingOut(false);
     }
   };
 
@@ -88,6 +111,21 @@ export default function SettingsClient({ profile }: { profile: Profile }) {
                   <span className="text-sm text-zinc-500">Allow Marshmallow AI to index your private posts to provide you with personalized answers and content retrieval. (Your data is never shared with others).</span>
                 </div>
               </label>
+            </div>
+
+            <div className="bg-white rounded-[24px] p-8 shadow-[0_4px_20px_-2px_hsla(25,30%,20%,0.08)] border border-[#F5EBE1]">
+              <h2 className="text-2xl text-[#843615] font-extrabold mb-6">Account</h2>
+              <p className="text-sm text-zinc-500 mb-5">
+                End your current session on this device.
+              </p>
+              <button
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="px-8 py-3 rounded-xl bg-[#843615] text-white font-bold flex items-center gap-2 hover:bg-[#6b2c11] transition-colors shadow-md disabled:opacity-50"
+              >
+                <Icon name="logout" size={18} className="text-white" />
+                {isLoggingOut ? "Logging Out..." : "Log Out"}
+              </button>
             </div>
 
             <div className="flex justify-end mt-4">

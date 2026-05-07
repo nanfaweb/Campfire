@@ -5,7 +5,7 @@ import SettingsClient from "@/app/(main)/settings/SettingsClient";
 export default async function SettingsPage() {
   const profile = await getCurrentProfile();
   if (!profile) {
-    redirect("/auth/signup");
+    redirect("/signup");
   }
 
   return <SettingsClient profile={profile} />;

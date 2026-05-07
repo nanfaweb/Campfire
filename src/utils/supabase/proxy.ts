@@ -48,7 +48,9 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Require a registered profile for protected routes.
-  if (user && !isPublicPath) {
+  const allowsMissingProfile = pathname === '/setup-profile'
+
+  if (user && !isPublicPath && !allowsMissingProfile) {
     const { data: profile, error } = await supabase
       .from('profiles')
       .select('id')

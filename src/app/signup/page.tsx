@@ -25,12 +25,20 @@ export default function SignupPage() {
     setIsLoading(true);
     setAuthError('');
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const normalizedEmail = email.trim().toLowerCase();
+      const { error } = await supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password,
+      });
       if (error) throw error;
       router.push('/home');
     } catch (error: any) {
       console.error('Error logging in:', error.message);
-      setAuthError(error.message);
+      if (error.message?.toLowerCase().includes('invalid login credentials')) {
+        setAuthError('Invalid email/password, or your email is not confirmed yet.');
+      } else {
+        setAuthError(error.message);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -45,8 +53,9 @@ export default function SignupPage() {
     }
     setIsLoading(true);
     try {
+      const normalizedEmail = email.trim().toLowerCase();
       const { error } = await supabase.auth.signUp({
-        email,
+        email: normalizedEmail,
         password,
         options: {
           data: {

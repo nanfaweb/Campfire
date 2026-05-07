@@ -22,7 +22,7 @@ export default function SetupProfilePage() {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        router.push('/auth/signup');
+        router.push('/signup');
       }
     };
     checkAuth();

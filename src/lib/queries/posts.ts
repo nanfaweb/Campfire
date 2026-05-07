@@ -12,6 +12,30 @@ export async function getFeedPosts(userId: string): Promise<FeedPost[]> {
   const supabase = await createClient();
 
   try {
+    // Fetch accepted friends first; home feed should only show friend posts.
+    const { data: friendships, error: friendshipsError } = await supabase
+      .from("friendships")
+      .select("requester_id, addressee_id")
+      .eq("status", "accepted")
+      .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`);
+
+    if (friendshipsError) {
+      console.error("[getFeedPosts] friendships error:", friendshipsError.message);
+      return [];
+    }
+
+    const friendIds = Array.from(
+      new Set(
+        (friendships ?? []).map((f) =>
+          f.requester_id === userId ? f.addressee_id : f.requester_id
+        )
+      )
+    );
+
+    if (friendIds.length === 0) {
+      return [];
+    }
+
     const { data, error } = await supabase
       .from("posts")
       .select(
@@ -24,6 +48,7 @@ export async function getFeedPosts(userId: string): Promise<FeedPost[]> {
       `
       )
       .eq("is_deleted", false)
+      .in("author_id", friendIds)
       .order("created_at", { ascending: false })
       .limit(30);
 
@@ -41,6 +66,7 @@ export async function getFeedPosts(userId: string): Promise<FeedPost[]> {
         `
         )
         .eq("is_deleted", false)
+        .in("author_id", friendIds)
         .order("created_at", { ascending: false })
         .limit(30);
 

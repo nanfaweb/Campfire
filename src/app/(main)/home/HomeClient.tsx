@@ -318,7 +318,7 @@ export default function HomeClient({
                 className="text-orange-200 mx-auto mb-4"
               />
               <p className="text-zinc-400 text-sm">
-                No sparks yet. Be the first to ignite the fire! 🔥
+                Your camp is quiet right now. Explore the camp and make new friends to light up your feed. 🔥
               </p>
             </div>
           ) : (

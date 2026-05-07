@@ -27,8 +27,45 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  // refreshing the auth token
-  await supabase.auth.getUser()
+  const pathname = request.nextUrl.pathname
+  const publicPaths = new Set(['/signup', '/auth/callback'])
+  const isPublicPath = publicPaths.has(pathname)
+
+  // Refresh the auth token and require a logged-in user for protected routes.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user && !isPublicPath) {
+    if (pathname.startsWith('/api')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const redirectUrl = request.nextUrl.clone()
+    redirectUrl.pathname = '/signup'
+    redirectUrl.search = ''
+    return NextResponse.redirect(redirectUrl)
+  }
+
+  // Require a registered profile for protected routes.
+  if (user && !isPublicPath) {
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    if (error || !profile) {
+      if (pathname.startsWith('/api')) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+
+      const redirectUrl = request.nextUrl.clone()
+      redirectUrl.pathname = '/signup'
+      redirectUrl.search = ''
+      return NextResponse.redirect(redirectUrl)
+    }
+  }
 
   return supabaseResponse
 }

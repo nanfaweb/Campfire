@@ -18,9 +18,6 @@ export default function ExploreClient({
   recommendedUsers,
   currentUserId,
 }: ExploreClientProps) {
-  const [activeTab, setActiveTab] = useState<"friends" | "recommended">(
-    "friends"
-  );
   const [followState, setFollowState] = useState<Record<string, boolean>>(
     Object.fromEntries(recommendedUsers.map((u) => [u.id, false]))
   );
@@ -83,25 +80,15 @@ export default function ExploreClient({
         </div>
       </header>
 
-      {/* Tabs */}
+      {/* Section tab */}
       <div className="flex gap-8 mb-8 border-b border-orange-100">
-        {(["friends", "recommended"] as const).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`pb-4 relative font-bold text-lg capitalize transition-colors ${
-              activeTab === tab
-                ? "text-[#231a11]"
-                : "text-[#8d7167] hover:text-[#802a00]"
-            }`}
-            style={{ fontFamily: "Space Grotesk" }}
-          >
-            {tab}
-            {activeTab === tab && (
-              <div className="absolute bottom-0 left-0 w-full h-1 rounded-t-full bg-gradient-to-r from-[#ff6b2b] to-[#ff3cac]" />
-            )}
-          </button>
-        ))}
+        <div
+          className="pb-4 relative font-bold text-lg capitalize text-[#231a11]"
+          style={{ fontFamily: "Space Grotesk" }}
+        >
+          Recommended
+          <div className="absolute bottom-0 left-0 w-full h-1 rounded-t-full bg-gradient-to-r from-[#ff6b2b] to-[#ff3cac]" />
+        </div>
       </div>
 
       {/* Recommended Users */}
@@ -118,12 +105,6 @@ export default function ExploreClient({
               Recommended based on your sparks
             </p>
           </div>
-          <button className="text-[#ff6b2b] text-xs font-bold uppercase tracking-wider flex items-center gap-1 hover:underline">
-            VIEW ALL{" "}
-            <span className="material-symbols-outlined text-sm">
-              arrow_forward
-            </span>
-          </button>
         </div>
 
         <div className="grid grid-cols-3 gap-6">

@@ -6,9 +6,27 @@ import { Icon } from "@/components/Icon";
 import type { Profile } from "@/types/database";
 import { createClient } from "@/utils/supabase/client";
 
-export default function SettingsClient({ profile }: { profile: Profile }) {
+interface SettingsClientProps {
+  profile: Profile;
+  canResetPassword: boolean;
+  authEmail: string;
+}
+
+export default function SettingsClient({
+  profile,
+  canResetPassword,
+  authEmail,
+}: SettingsClientProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState("");
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
   const [formData, setFormData] = useState({
     displayName: profile.display_name || "",
     bio: profile.bio || "",
@@ -56,6 +74,63 @@ export default function SettingsClient({ profile }: { profile: Profile }) {
       alert("Failed to log out. Please try again.");
     } finally {
       setIsLoggingOut(false);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    setPasswordError("");
+    setPasswordSuccess("");
+
+    if (!canResetPassword) {
+      setPasswordError(
+        "Password reset is not available for Google sign-in accounts."
+      );
+      return;
+    }
+
+    if (!passwordForm.currentPassword || !passwordForm.newPassword) {
+      setPasswordError("Please fill in all password fields.");
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError("New password and confirmation do not match.");
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 8) {
+      setPasswordError("New password must be at least 8 characters.");
+      return;
+    }
+
+    setIsResettingPassword(true);
+    try {
+      const response = await fetch("/api/settings/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword,
+        }),
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error || "Failed to reset password.");
+      }
+
+      setPasswordSuccess("Password updated successfully.");
+      setPasswordForm({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+    } catch (e) {
+      const message =
+        e instanceof Error ? e.message : "Failed to reset password.";
+      setPasswordError(message);
+    } finally {
+      setIsResettingPassword(false);
     }
   };
 
@@ -114,6 +189,91 @@ export default function SettingsClient({ profile }: { profile: Profile }) {
             </div>
 
             <div className="bg-white rounded-[24px] p-8 shadow-[0_4px_20px_-2px_hsla(25,30%,20%,0.08)] border border-[#F5EBE1]">
+              <h2 className="text-2xl text-[#843615] font-extrabold mb-6">Security</h2>
+              <p className="text-sm text-zinc-500 mb-5">
+                Change your password for your CampFire account.
+              </p>
+              {!canResetPassword && (
+                <div className="mb-5 text-sm rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-zinc-600">
+                  Password reset is unavailable for Google OAuth accounts.
+                </div>
+              )}
+              {canResetPassword && (
+                <p className="text-xs text-zinc-400 mb-4">
+                  Signed in as {authEmail || "email account"}
+                </p>
+              )}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-bold text-zinc-700 mb-1">
+                    Current Password
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordForm.currentPassword}
+                    onChange={(e) =>
+                      setPasswordForm({
+                        ...passwordForm,
+                        currentPassword: e.target.value,
+                      })
+                    }
+                    disabled={!canResetPassword || isResettingPassword}
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm focus:ring-1 focus:ring-orange-300 outline-none disabled:opacity-60"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-zinc-700 mb-1">
+                    New Password
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordForm.newPassword}
+                    onChange={(e) =>
+                      setPasswordForm({
+                        ...passwordForm,
+                        newPassword: e.target.value,
+                      })
+                    }
+                    disabled={!canResetPassword || isResettingPassword}
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm focus:ring-1 focus:ring-orange-300 outline-none disabled:opacity-60"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-zinc-700 mb-1">
+                    Confirm New Password
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordForm.confirmPassword}
+                    onChange={(e) =>
+                      setPasswordForm({
+                        ...passwordForm,
+                        confirmPassword: e.target.value,
+                      })
+                    }
+                    disabled={!canResetPassword || isResettingPassword}
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm focus:ring-1 focus:ring-orange-300 outline-none disabled:opacity-60"
+                  />
+                </div>
+              </div>
+
+              {passwordError && (
+                <p className="mt-4 text-sm text-red-600">{passwordError}</p>
+              )}
+              {passwordSuccess && (
+                <p className="mt-4 text-sm text-emerald-700">{passwordSuccess}</p>
+              )}
+
+              <button
+                onClick={handlePasswordReset}
+                disabled={!canResetPassword || isResettingPassword}
+                className="mt-6 px-8 py-3 rounded-xl bg-[#843615] text-white font-bold flex items-center gap-2 hover:bg-[#6b2c11] transition-colors shadow-md disabled:opacity-50"
+              >
+                {isResettingPassword ? "Updating Password..." : "Update Password"}
+              </button>
+            </div>
+
+            <div className="bg-white rounded-[24px] p-8 shadow-[0_4px_20px_-2px_hsla(25,30%,20%,0.08)] border border-[#F5EBE1]">
               <h2 className="text-2xl text-[#843615] font-extrabold mb-6">Account</h2>
               <p className="text-sm text-zinc-500 mb-5">
                 End your current session on this device.
@@ -128,7 +288,7 @@ export default function SettingsClient({ profile }: { profile: Profile }) {
               </button>
             </div>
 
-            <div className="flex justify-end mt-4">
+            <div className="flex justify-center mt-4">
               <button 
                 onClick={handleSave}
                 disabled={isSaving}

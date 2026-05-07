@@ -19,6 +19,8 @@ export default function SettingsClient({
 }: SettingsClientProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [saveSuccess, setSaveSuccess] = useState("");
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState("");
   const [passwordSuccess, setPasswordSuccess] = useState("");
@@ -37,6 +39,8 @@ export default function SettingsClient({
   const router = useRouter();
 
   const handleSave = async () => {
+    setSaveError("");
+    setSaveSuccess("");
     setIsSaving(true);
     try {
       await supabase
@@ -47,11 +51,11 @@ export default function SettingsClient({
           marshmallow_consent: formData.marshmallowConsent,
         })
         .eq("id", profile.id);
-      
-      alert("Settings saved successfully!");
+
+      setSaveSuccess("Settings saved successfully.");
     } catch (e) {
       console.error(e);
-      alert("Failed to save settings.");
+      setSaveError("Failed to save settings.");
     } finally {
       setIsSaving(false);
     }
@@ -289,13 +293,17 @@ export default function SettingsClient({
             </div>
 
             <div className="flex justify-center mt-4">
-              <button 
-                onClick={handleSave}
-                disabled={isSaving}
-                className="px-8 py-3 rounded-xl bg-[#843615] text-white font-bold flex items-center gap-2 hover:bg-[#6b2c11] transition-colors shadow-md disabled:opacity-50"
-              >
-                {isSaving ? "Saving..." : "Save Changes"}
-              </button>
+              <div className="flex flex-col items-center gap-3">
+                {saveError && <p className="text-sm text-red-600">{saveError}</p>}
+                {saveSuccess && <p className="text-sm text-emerald-700">{saveSuccess}</p>}
+                <button
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="px-8 py-3 rounded-xl bg-[#843615] text-white font-bold flex items-center gap-2 hover:bg-[#6b2c11] transition-colors shadow-md disabled:opacity-50"
+                >
+                  {isSaving ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
             </div>
           </div>
         </div>

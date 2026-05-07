@@ -25,7 +25,7 @@ export default function SignupPage() {
     setIsLoading(true);
     setAuthError('');
     try {
-      const normalizedEmail = email.trim().toLowerCase();
+      const normalizedEmail = email.trim();
       const { error } = await supabase.auth.signInWithPassword({
         email: normalizedEmail,
         password,
@@ -35,7 +35,7 @@ export default function SignupPage() {
     } catch (error: any) {
       console.error('Error logging in:', error.message);
       if (error.message?.toLowerCase().includes('invalid login credentials')) {
-        setAuthError('Invalid email/password, or your email is not confirmed yet.');
+        setAuthError('Invalid email/password. If this account was created with Google, use "Continue with Google".');
       } else {
         setAuthError(error.message);
       }
@@ -53,7 +53,7 @@ export default function SignupPage() {
     }
     setIsLoading(true);
     try {
-      const normalizedEmail = email.trim().toLowerCase();
+      const normalizedEmail = email.trim();
       const { error } = await supabase.auth.signUp({
         email: normalizedEmail,
         password,

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { Icon } from "@/components/Icon";
 import { Avatar } from "@/components/Avatar";
@@ -10,9 +10,10 @@ import { Profile } from "@/types/database";
 interface CreatePostProps {
   currentUser: Profile;
   onPostCreated?: () => void;
+  autoFocus?: boolean;
 }
 
-export function CreatePost({ currentUser, onPostCreated }: CreatePostProps) {
+export function CreatePost({ currentUser, onPostCreated, autoFocus }: CreatePostProps) {
   const [content, setContent] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<{url: string, type: string}[]>([]);
@@ -22,6 +23,18 @@ export function CreatePost({ currentUser, onPostCreated }: CreatePostProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const supabase = createClient();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Handle auto-focus from sidebar (even if already on home)
+  React.useEffect(() => {
+    if (searchParams.get("create") === "true" && textareaRef.current) {
+      textareaRef.current.focus();
+      // Scroll into view with a slight delay to ensure it works during transitions
+      setTimeout(() => {
+        textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 50);
+    }
+  }, [searchParams]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {

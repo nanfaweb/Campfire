@@ -2,11 +2,12 @@
 
 import React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Icon } from "./Icon";
 
 export function Sidebar({ currentUsername }: { currentUsername?: string }) {
   const pathname = usePathname();
+  const router = useRouter();
 
   const navItems = [
     { icon: "home", label: "HOME", href: "/home" },
@@ -54,7 +55,12 @@ export function Sidebar({ currentUsername }: { currentUsername?: string }) {
 
       {/* New Spark Button */}
       <div className="p-6 mt-auto">
-        <button className="w-full flex items-center justify-center gap-2 bg-[#843615] text-white py-4 rounded-xl font-bold shadow-md hover:bg-[#6b2c11] transition-colors ember-glow">
+        <button 
+          onClick={() => {
+            router.push(`/home?create=true&t=${Date.now()}`);
+          }}
+          className="w-full flex items-center justify-center gap-2 bg-[#843615] text-white py-4 rounded-xl font-bold shadow-md hover:bg-[#6b2c11] transition-colors ember-glow active:scale-95"
+        >
           <Icon name="add" size={20} />
           New Spark
         </button>

@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { recipient_id, content } = body;
+    const { recipient_id, content, attachment_url } = body;
 
     if (!recipient_id || typeof recipient_id !== "string") {
       return NextResponse.json(
@@ -26,9 +26,9 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!content || typeof content !== "string" || content.trim().length === 0) {
+    if (!attachment_url && (!content || content.trim().length === 0)) {
       return NextResponse.json(
-        { error: "Message content cannot be empty" },
+        { error: "Message content or attachment is required" },
         { status: 400 }
       );
     }
@@ -45,7 +45,8 @@ export async function POST(request: Request) {
       .insert({
         sender_id: user.id,
         recipient_id,
-        content: content.trim(),
+        content: content?.trim() || "",
+        attachment_url: attachment_url || null,
       })
       .select()
       .single();

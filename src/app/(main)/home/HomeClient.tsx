@@ -4,7 +4,7 @@
 // Receives server-fetched data as props; handles likes, saves, Marshmallow chat.
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { Icon } from "@/components/Icon";
 import { Avatar } from "@/components/Avatar";
@@ -52,6 +52,9 @@ export default function HomeClient({
   suggestions,
   friends = [],
 }: HomeClientProps) {
+  const searchParams = useSearchParams();
+  const shouldCreate = searchParams.get("create") === "true";
+
   const [marshmallowMsg, setMarshmallowMsg] = useState("");
   const [marshmallowLoading, setMarshmallowLoading] = useState(false);
   const [followState, setFollowState] = useState<Record<string, boolean>>({});
@@ -141,7 +144,7 @@ export default function HomeClient({
         </div>
 
         {/* Create Post Section */}
-        <CreatePost currentUser={currentUser} />
+        <CreatePost currentUser={currentUser} autoFocus={shouldCreate} />
 
         {/* Marshmallow chip */}
         <div className="mb-8">

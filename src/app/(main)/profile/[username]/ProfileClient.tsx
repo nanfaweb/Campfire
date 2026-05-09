@@ -285,17 +285,26 @@ export default function ProfileClient({
                   Edit Profile
                 </button>
               ) : (
-                <button
-                  onClick={handleToggleFollow}
-                  disabled={saving}
-                  className={`px-8 py-2.5 rounded-xl font-bold shadow-md transition-all text-sm active:scale-95
-                    ${following 
-                      ? "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 hover:text-red-600" 
-                      : "bg-orange-500 text-white hover:bg-orange-600"
-                    }`}
-                >
-                  {saving ? "..." : following ? "Unfollow" : "Follow"}
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleToggleFollow}
+                    disabled={saving}
+                    className={`px-8 py-2.5 rounded-xl font-bold shadow-md transition-all text-sm active:scale-95
+                      ${following 
+                        ? "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 hover:text-red-600" 
+                        : "bg-orange-500 text-white hover:bg-orange-600"
+                      }`}
+                  >
+                    {saving ? "..." : following ? "Unfollow" : "Follow"}
+                  </button>
+                  <Link
+                    href={`/messages?userId=${profile.id}`}
+                    className="bg-white border border-orange-100 text-orange-600 hover:bg-orange-50 px-6 py-2.5 rounded-xl font-bold shadow-sm transition-all text-sm flex items-center gap-2 active:scale-95"
+                  >
+                    <Icon name="mail" size={18} />
+                    Message
+                  </Link>
+                </div>
               )}
             </div>
           )}

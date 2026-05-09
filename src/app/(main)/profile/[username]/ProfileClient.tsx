@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import type { Profile, FeedPost } from "@/types/database";
+import type { Profile, FeedPost, Story } from "@/types/database";
 import { createClient } from "@/utils/supabase/client";
 import { Avatar } from "@/components/Avatar";
 import { PostCard } from "@/components/PostCard";
@@ -16,6 +16,7 @@ interface ProfileClientProps {
   initialFollowStatus: "accepted" | "pending" | "none";
   initialFollowers: Profile[];
   initialFollowing: Profile[];
+  stories: Story[];
 }
 
 export default function ProfileClient({
@@ -25,6 +26,7 @@ export default function ProfileClient({
   initialFollowStatus,
   initialFollowers,
   initialFollowing,
+  stories,
 }: ProfileClientProps) {
   const isOwnProfile = profile.id === currentUserId;
   const router = useRouter();
@@ -39,6 +41,10 @@ export default function ProfileClient({
   const [followStatus, setFollowStatus] = useState<"accepted" | "pending" | "none">(initialFollowStatus);
   const [showFollowersList, setShowFollowersList] = useState(false);
   const [showFollowingList, setShowFollowingList] = useState(false);
+
+  // Story state
+  const [isViewingStories, setIsViewingStories] = useState(false);
+  const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -149,6 +155,21 @@ export default function ProfileClient({
     }
   };
 
+  useEffect(() => {
+    if (!isViewingStories) return;
+
+    const timer = setTimeout(() => {
+      if (currentStoryIndex < stories.length - 1) {
+        setCurrentStoryIndex(prev => prev + 1);
+      } else {
+        setIsViewingStories(false);
+        setCurrentStoryIndex(0);
+      }
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [isViewingStories, currentStoryIndex, stories.length]);
+
   const dateStr = (d: string) =>
     new Date(d).toLocaleDateString("en-US", {
       month: "short",
@@ -158,23 +179,41 @@ export default function ProfileClient({
 
   return (
     <main className="ml-64 flex-1 pt-8 px-10 max-w-5xl">
+      <style>{`
+        @keyframes story-progress {
+          from { width: 0%; }
+          to { width: 100%; }
+        }
+        .animate-story-progress { animation: story-progress 5s linear forwards; }
+        .story-ring { background: linear-gradient(135deg,#FF6B2B 0%,#FF3CAC 50%,#784BA0 100%); }
+      `}</style>
       {/* Profile Header */}
       <section className="bg-white rounded-3xl p-8 mb-12 shadow-[0_4px_20px_-2px_hsla(25,30%,20%,0.08)] border border-[rgba(255,107,43,0.1)] relative overflow-hidden">
         {/* Banner decorative element */}
         <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-r from-orange-200 to-rose-200 opacity-50 z-0" />
         
         <div className="relative z-10 flex flex-col md:flex-row gap-8 items-start md:items-end mt-12">
-          {/* Avatar Area */}
-          <div className="relative group">
-            <div className={`rounded-full p-2 bg-white shadow-xl ${uploadingAvatar ? 'animate-pulse' : ''}`}>
-              <Avatar src={profile.avatar_url} alt={profile.username} size={140} ring />
+          {/* Avatar Area with Story support */}
+          <div 
+            className={`relative group ${stories.length > 0 ? 'cursor-pointer' : ''}`}
+            onClick={() => {
+              if (stories.length > 0) {
+                setIsViewingStories(true);
+                setCurrentStoryIndex(0);
+              }
+            }}
+          >
+            <div className={`rounded-full p-1 shadow-xl transition-transform ${stories.length > 0 ? 'story-ring group-hover:scale-105' : 'bg-white'} ${uploadingAvatar ? 'animate-pulse' : ''}`}>
+              <div className="bg-white p-1 rounded-full">
+                <Avatar src={profile.avatar_url} alt={profile.username} size={132} />
+              </div>
             </div>
             
             {isOwnProfile && (
               <button 
-                onClick={() => fileInputRef.current?.click()}
+                onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
                 disabled={uploadingAvatar}
-                className="absolute bottom-4 right-4 bg-orange-500 text-white p-2.5 rounded-full shadow-lg hover:bg-orange-600 transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                className="absolute bottom-4 right-4 bg-orange-500 text-white p-2.5 rounded-full shadow-lg hover:bg-orange-600 transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-50 z-10"
                 title="Change Avatar"
               >
                 <Icon name="photo_camera" size={20} />
@@ -396,6 +435,105 @@ export default function ProfileClient({
                 ))
               )}
             </div>
+          </div>
+        </div>
+      )}
+      {/* Story Viewer Modal */}
+      {isViewingStories && stories.length > 0 && (
+        <div className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center animate-in fade-in duration-300">
+          <div className="absolute top-4 left-0 w-full px-4 flex gap-1.5 z-50">
+            {stories.map((_, idx) => (
+              <div key={idx} className="h-1 flex-1 bg-white/20 rounded-full overflow-hidden">
+                <div 
+                  key={`${profile.id}-${idx}-${currentStoryIndex}`}
+                  className={`h-full bg-white ${idx === currentStoryIndex ? 'animate-story-progress' : idx < currentStoryIndex ? 'w-full' : 'w-0'}`}
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="absolute top-10 left-4 flex items-center gap-3 z-50">
+            <Avatar src={profile.avatar_url} alt="author" size={40} ring />
+            <div className="flex flex-col">
+              <span className="text-white font-bold text-sm drop-shadow-md leading-tight">
+                {profile.display_name || profile.username}
+              </span>
+              <span className="text-[10px] text-white/60 font-bold uppercase tracking-wider">
+                {new Date(stories[currentStoryIndex].created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
+          </div>
+
+          <button 
+            onClick={() => setIsViewingStories(false)}
+            className="absolute top-10 right-4 text-white p-2 hover:bg-white/10 rounded-full z-50 transition-colors"
+          >
+            <Icon name="close" size={28} />
+          </button>
+
+          <div className="relative w-full h-[90vh] max-w-[500px] aspect-[9/16] bg-zinc-900 rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/10">
+            <div 
+              className="absolute left-0 top-0 w-1/4 h-full cursor-pointer z-30"
+              onClick={(e) => {
+                e.stopPropagation();
+                setCurrentStoryIndex(prev => Math.max(0, prev - 1));
+              }}
+            />
+            <div 
+              className="absolute right-0 top-0 w-1/4 h-full cursor-pointer z-30"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (currentStoryIndex < stories.length - 1) {
+                  setCurrentStoryIndex(prev => prev + 1);
+                } else {
+                  setIsViewingStories(false);
+                }
+              }}
+            />
+
+            {/* Visible Navigation Buttons */}
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 z-40">
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentStoryIndex(prev => Math.max(0, prev - 1));
+                }}
+                className="bg-black/40 hover:bg-black/60 text-white p-3 rounded-full backdrop-blur-md transition-all active:scale-90 shadow-2xl border border-white/20"
+              >
+                <Icon name="chevron_left" size={32} />
+              </button>
+            </div>
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 z-40">
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (currentStoryIndex < stories.length - 1) {
+                    setCurrentStoryIndex(prev => prev + 1);
+                  } else {
+                    setIsViewingStories(false);
+                  }
+                }}
+                className="bg-black/40 hover:bg-black/60 text-white p-3 rounded-full backdrop-blur-md transition-all active:scale-90 shadow-2xl border border-white/20"
+              >
+                <Icon name="chevron_right" size={32} />
+              </button>
+            </div>
+
+            {stories[currentStoryIndex].media_type === "video" ? (
+              <video 
+                src={stories[currentStoryIndex].media_url} 
+                autoPlay 
+                muted={false}
+                playsInline
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <img 
+                src={stories[currentStoryIndex].media_url} 
+                alt="story" 
+                className="w-full h-full object-cover select-none"
+              />
+            )}
           </div>
         </div>
       )}

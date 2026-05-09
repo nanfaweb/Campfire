@@ -139,6 +139,18 @@ export interface ChatbotMessage {
   created_at: string;
 }
 
+// ── Stories ──────────────────────────────────────────────────────────────────
+
+export interface Story {
+  id: string;
+  author_id: string;
+  media_url: string;
+  media_type: "image" | "video";
+  created_at: string;
+  expires_at: string;
+  author?: Profile;
+}
+
 // ── Friend suggestion (computed) ─────────────────────────────────────────────
 
 export interface FriendSuggestion {
@@ -148,5 +160,6 @@ export interface FriendSuggestion {
   avatar_url: string | null;
   bio: string;
   is_public_profile: boolean;
+  initial_status?: "accepted" | "pending" | "none";
   mutual_count?: number;
 }

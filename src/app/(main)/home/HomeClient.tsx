@@ -57,7 +57,9 @@ export default function HomeClient({
 
   const [marshmallowMsg, setMarshmallowMsg] = useState("");
   const [marshmallowLoading, setMarshmallowLoading] = useState(false);
-  const [followState, setFollowState] = useState<Record<string, boolean>>({});
+  const [followState, setFollowState] = useState<Record<string, boolean>>(
+    Object.fromEntries(suggestions.map((u) => [u.id, u.initial_status === "pending"]))
+  );
   const [homeSearch, setHomeSearch] = useState("");
   const [searchResults, setSearchResults] = useState<Profile[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -86,12 +88,15 @@ export default function HomeClient({
   }
 
   async function handleFollow(targetUserId: string) {
+    const targetUser = suggestions.find(u => u.id === targetUserId);
+    const status = targetUser?.is_public_profile ? "accepted" : "pending";
+
     setFollowState((prev) => ({ ...prev, [targetUserId]: true }));
     try {
       const { error } = await supabase.from("friendships").insert({
         requester_id: currentUser.id,
         addressee_id: targetUserId,
-        status: "accepted", 
+        status, 
       });
 
       if (error) {
@@ -368,7 +373,7 @@ export default function HomeClient({
                       className="text-[10px] font-bold uppercase tracking-widest text-zinc-400"
                       style={{ fontFamily: "Space Grotesk, sans-serif" }}
                     >
-                      Following
+                      {s.is_public_profile ? "Following" : "Pending"}
                     </button>
                   ) : (
                     <button

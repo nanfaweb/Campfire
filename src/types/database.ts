@@ -23,6 +23,7 @@ export interface Profile {
   avatar_url: string | null;
   role: UserRole;
   marshmallow_consent: boolean;
+  is_public_profile: boolean;
   is_verified: boolean;
   is_banned: boolean;
   date_of_birth: string;
@@ -146,5 +147,6 @@ export interface FriendSuggestion {
   display_name: string;
   avatar_url: string | null;
   bio: string;
+  is_public_profile: boolean;
   mutual_count?: number;
 }

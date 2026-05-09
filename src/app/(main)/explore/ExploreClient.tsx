@@ -22,7 +22,7 @@ export default function ExploreClient({
   currentUserId,
 }: ExploreClientProps) {
   const [followState, setFollowState] = useState<Record<string, boolean>>(
-    Object.fromEntries(recommendedUsers.map((u) => [u.id, false]))
+    Object.fromEntries(recommendedUsers.map((u) => [u.id, u.initial_status === "pending"]))
   );
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -68,11 +68,14 @@ export default function ExploreClient({
           .delete()
           .match({ requester_id: currentUserId, addressee_id: userId });
       } else {
-        // Send friendship request
+        // Follow: handle public vs private
+        const targetUser = recommendedUsers.find(u => u.id === userId);
+        const status = targetUser?.is_public_profile ? "accepted" : "pending";
+        
         await supabase.from("friendships").insert({
           requester_id: currentUserId,
           addressee_id: userId,
-          status: "accepted",
+          status,
         });
       }
       router.refresh();
@@ -191,7 +194,7 @@ export default function ExploreClient({
                     className="w-full py-2 rounded-xl bg-[#a83900] text-white font-bold text-sm shadow-md shadow-[#a83900]/20 transition-all duration-200 hover:opacity-90"
                     style={{ fontFamily: "Space Grotesk" }}
                   >
-                    Following
+                    {user.is_public_profile ? "Following" : "Request Sent"}
                   </button>
                 ) : (
                   <button

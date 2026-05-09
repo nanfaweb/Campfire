@@ -13,7 +13,7 @@ interface ProfileClientProps {
   profile: Profile;
   posts: FeedPost[];
   currentUserId: string;
-  isFollowingInitial: boolean;
+  initialFollowStatus: "accepted" | "pending" | "none";
   initialFollowers: Profile[];
   initialFollowing: Profile[];
 }
@@ -22,7 +22,7 @@ export default function ProfileClient({
   profile,
   posts,
   currentUserId,
-  isFollowingInitial,
+  initialFollowStatus,
   initialFollowers,
   initialFollowing,
 }: ProfileClientProps) {
@@ -36,7 +36,7 @@ export default function ProfileClient({
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   
-  const [following, setFollowing] = useState(isFollowingInitial);
+  const [followStatus, setFollowStatus] = useState<"accepted" | "pending" | "none">(initialFollowStatus);
   const [showFollowersList, setShowFollowersList] = useState(false);
   const [showFollowingList, setShowFollowingList] = useState(false);
 
@@ -108,41 +108,41 @@ export default function ProfileClient({
     if (isOwnProfile || saving) return;
     
     setSaving(true);
-    const wasFollowing = following;
-    setFollowing(!wasFollowing);
-    
+    const previousStatus = followStatus;
+    setSaving(true);
     try {
-      if (wasFollowing) {
-        // Unfollow: delete the friendship record
+      if (followStatus !== "none") {
+        // Unfollow or Cancel Request
         const { error } = await supabase
           .from("friendships")
           .delete()
-          .eq("requester_id", currentUserId)
-          .eq("addressee_id", profile.id);
+          .match({ requester_id: currentUserId, addressee_id: profile.id });
 
         if (error) throw error;
+        setFollowStatus("none");
       } else {
-        // Follow: insert a new friendship record
+        // Follow: handle public vs private
+        const status = profile.is_public_profile ? "accepted" : "pending";
         const { error } = await supabase.from("friendships").insert({
           requester_id: currentUserId,
           addressee_id: profile.id,
-          status: "accepted",
+          status,
         });
 
         if (error) {
-          // If already exists, we consider it a success/already followed
           if (error.code === "23505") {
-            console.log("Already following user.");
+            console.log("Request already exists.");
           } else {
             throw error;
           }
         }
+        setFollowStatus(status);
       }
       
       router.refresh();
     } catch (error: any) {
-      setFollowing(wasFollowing);
-      console.error("Error toggling follow:", error?.message || error);
+      setFollowStatus(previousStatus);
+      console.error("Error updating follow status:", error?.message || error);
       alert(`Failed to update follow status: ${error?.message || "Unknown error"}`);
     } finally {
       setSaving(false);
@@ -290,12 +290,14 @@ export default function ProfileClient({
                     onClick={handleToggleFollow}
                     disabled={saving}
                     className={`px-8 py-2.5 rounded-xl font-bold shadow-md transition-all text-sm active:scale-95
-                      ${following 
+                      ${followStatus === "accepted" 
                         ? "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 hover:text-red-600" 
+                        : followStatus === "pending"
+                        ? "bg-orange-100 text-orange-400 cursor-not-allowed"
                         : "bg-orange-500 text-white hover:bg-orange-600"
                       }`}
                   >
-                    {saving ? "..." : following ? "Unfollow" : "Follow"}
+                    {saving ? "..." : followStatus === "accepted" ? "Unfollow" : followStatus === "pending" ? "Request Sent" : "Follow"}
                   </button>
                   <Link
                     href={`/messages?userId=${profile.id}`}
@@ -317,7 +319,15 @@ export default function ProfileClient({
           {isOwnProfile ? "Your Sparks" : `${profile.display_name || profile.username}'s Sparks`}
         </h3>
 
-        {posts.length === 0 ? (
+        {!isOwnProfile && !profile.is_public_profile && followStatus !== "accepted" ? (
+          <div className="text-center py-20 bg-white rounded-[2rem] border border-orange-100 shadow-sm flex flex-col items-center">
+            <div className="w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center mb-6">
+              <Icon name="lock" size={32} className="text-orange-400" />
+            </div>
+            <h4 className="text-xl font-bold text-[#231a11] mb-2 font-[Space_Grotesk]">This account is private</h4>
+            <p className="text-zinc-500 max-w-xs">Follow them to see their sparks and join the conversation! 🔒</p>
+          </div>
+        ) : posts.length === 0 ? (
           <div className="text-center py-12 bg-white/50 rounded-2xl border border-zinc-100">
             <p className="text-zinc-400 font-medium">No sparks yet.</p>
           </div>

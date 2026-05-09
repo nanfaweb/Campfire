@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getCurrentProfile, getProfileByUsername, isFollowing, getFollowers, getFollowing } from "@/lib/queries/profiles";
+import { getCurrentProfile, getProfileByUsername, getFollowStatus, getFollowers, getFollowing } from "@/lib/queries/profiles";
 import { getUserPosts } from "@/lib/queries/posts";
 import ProfileClient from "@/app/(main)/profile/[username]/ProfileClient";
 
@@ -22,9 +22,9 @@ export default async function ProfilePage({
     redirect("/home");
   }
 
-  const [posts, followingStatus, followers, following] = await Promise.all([
+  const [posts, followStatus, followers, following] = await Promise.all([
     getUserPosts(profile.id, currentProfile.id),
-    isFollowing(currentProfile.id, profile.id),
+    getFollowStatus(currentProfile.id, profile.id),
     getFollowers(profile.id),
     getFollowing(profile.id),
   ]);
@@ -34,7 +34,7 @@ export default async function ProfilePage({
       profile={profile} 
       posts={posts} 
       currentUserId={currentProfile.id}
-      isFollowingInitial={followingStatus}
+      initialFollowStatus={followStatus}
       initialFollowers={followers}
       initialFollowing={following}
     />

@@ -71,25 +71,30 @@ export async function getFriendSuggestions(
   const supabase = await createClient();
 
   try {
-    // Step 1: Get all user IDs already in a friendship with the current user
-    const { data: existing } = await supabase
+    // Step 1: Get all relationships for the current user to determine status
+    const { data: relations } = await supabase
       .from("friendships")
-      .select("requester_id, addressee_id")
-      .or(
-        `requester_id.eq.${currentUserId},addressee_id.eq.${currentUserId}`
-      );
+      .select("requester_id, addressee_id, status")
+      .or(`requester_id.eq.${currentUserId},addressee_id.eq.${currentUserId}`);
 
-    const connectedIds = new Set<string>([currentUserId]);
-    (existing ?? []).forEach((f) => {
-      connectedIds.add(f.requester_id);
-      connectedIds.add(f.addressee_id);
+    const acceptedIds = new Set<string>([currentUserId]);
+    const pendingIds = new Set<string>();
+
+    (relations ?? []).forEach((f) => {
+      if (f.status === "accepted") {
+        acceptedIds.add(f.requester_id);
+        acceptedIds.add(f.addressee_id);
+      } else if (f.status === "pending" && f.requester_id === currentUserId) {
+        // We only care about pending requests we SENT for the "Following" button state
+        pendingIds.add(f.addressee_id);
+      }
     });
 
-    // Step 2: Fetch profiles not in the connected set
+    // Step 2: Fetch profiles not in the accepted set
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, username, display_name, avatar_url, bio")
-      .not("id", "in", `(${Array.from(connectedIds).join(",")})`)
+      .select("id, username, display_name, avatar_url, bio, is_public_profile")
+      .not("id", "in", `(${Array.from(acceptedIds).join(",")})`)
       .eq("is_banned", false)
       .limit(limit);
 
@@ -98,13 +103,11 @@ export async function getFriendSuggestions(
       return [];
     }
 
-    return (data ?? []).map((p) => ({
-      id: p.id,
-      username: p.username,
-      display_name: p.display_name,
-      avatar_url: p.avatar_url,
-      bio: p.bio,
-    }));
+    // Step 3: Map to include initial follow status
+    return (data || []).map(p => ({
+      ...p,
+      initial_status: pendingIds.has(p.id) ? "pending" : "none"
+    })) as FriendSuggestion[];
   } catch (err) {
     console.error("[getFriendSuggestions] unexpected error:", err);
     return [];
@@ -153,9 +156,9 @@ export async function getFriends(currentUserId: string): Promise<Profile[]> {
 }
 
 /**
- * Check if current user is following the target user.
+ * Check follow status between current user and target user.
  */
-export async function isFollowing(currentUserId: string, targetUserId: string): Promise<boolean> {
+export async function getFollowStatus(currentUserId: string, targetUserId: string): Promise<"accepted" | "pending" | "none"> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("friendships")
@@ -164,13 +167,28 @@ export async function isFollowing(currentUserId: string, targetUserId: string): 
     .eq("addressee_id", targetUserId)
     .maybeSingle();
 
-  // Consider it "following" if a record exists and it's accepted
-  return !!data && data.status === "accepted" && !error;
+  if (error || !data) return "none";
+  return data.status as "accepted" | "pending";
 }
 
 /**
- * Fetch profiles of users following the target user.
+ * Fetch pending follow requests for the current user.
  */
+export async function getPendingRequests(userId: string): Promise<any[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("friendships")
+    .select("*, requester:profiles!requester_id(*)")
+    .eq("addressee_id", userId)
+    .eq("status", "pending")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[getPendingRequests] error:", error.message);
+    return [];
+  }
+  return data || [];
+}
 export async function getFollowers(targetUserId: string): Promise<Profile[]> {
   const supabase = await createClient();
   const { data, error } = await supabase

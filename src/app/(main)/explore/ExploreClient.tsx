@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import type { FeedPost, FriendSuggestion } from "@/types/database";
 import { createClient } from "@/utils/supabase/client";
 import { Avatar } from "@/components/Avatar";
+import Link from "next/link";
 
 interface ExploreClientProps {
   posts: FeedPost[];
@@ -122,19 +123,23 @@ export default function ExploreClient({
                 className="bg-white p-6 rounded-2xl shadow-[0_4px_20px_-2px_hsla(25,30%,20%,0.08)] border border-[rgba(255,107,43,0.1)] flex flex-col items-center text-center group"
               >
                 <div className="mb-4">
-                  <Avatar
-                    src={user.avatar_url}
-                    alt={user.username}
-                    size={96}
-                    ring
-                  />
+                  <Link href={`/profile/${user.username}`}>
+                    <Avatar
+                      src={user.avatar_url}
+                      alt={user.username}
+                      size={96}
+                      ring
+                    />
+                  </Link>
                 </div>
-                <h4
-                  className="font-bold text-base text-[#231a11]"
-                  style={{ fontFamily: "Space Grotesk" }}
-                >
-                  {user.display_name || user.username}
-                </h4>
+                <Link href={`/profile/${user.username}`}>
+                  <h4
+                    className="font-bold text-base text-[#231a11] hover:underline"
+                    style={{ fontFamily: "Space Grotesk" }}
+                  >
+                    {user.display_name || user.username}
+                  </h4>
+                </Link>
                 <p className="text-[12px] font-bold uppercase tracking-[0.05em] text-[#8d7167] mb-6">
                   {user.bio?.slice(0, 30) || "CampFire member"}
                 </p>
@@ -197,17 +202,21 @@ export default function ExploreClient({
                 ) : null}
                 <div className="p-6">
                   <div className="flex items-center gap-3 mb-3">
-                    <Avatar
-                      src={post.author.avatar_url}
-                      alt={post.author.username}
-                      size={32}
-                    />
-                    <span
-                      className="font-bold text-sm text-[#231a11]"
-                      style={{ fontFamily: "Space Grotesk" }}
-                    >
-                      {post.author.username}
-                    </span>
+                    <Link href={`/profile/${post.author.username}`}>
+                      <Avatar
+                        src={post.author.avatar_url}
+                        alt={post.author.username}
+                        size={32}
+                      />
+                    </Link>
+                    <Link href={`/profile/${post.author.username}`}>
+                      <span
+                        className="font-bold text-sm text-[#231a11] hover:underline"
+                        style={{ fontFamily: "Space Grotesk" }}
+                      >
+                        {post.author.username}
+                      </span>
+                    </Link>
                     <span className="text-xs text-[#8d7167] ml-auto">
                       {dateStr(post.created_at)}
                     </span>

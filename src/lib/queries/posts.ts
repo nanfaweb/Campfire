@@ -122,6 +122,40 @@ export async function getExplorePosts(userId: string): Promise<FeedPost[]> {
   }
 }
 
+/**
+ * Fetch all posts by a specific user (for their profile page).
+ */
+export async function getUserPosts(targetUserId: string, currentUserId: string): Promise<FeedPost[]> {
+  const supabase = await createClient();
+
+  try {
+    const { data, error } = await supabase
+      .from("posts")
+      .select(
+        `
+        *,
+        author:profiles!author_id(*),
+        likes_agg:likes(count),
+        comments_agg:comments(count),
+        user_likes:likes(user_id)
+      `
+      )
+      .eq("is_deleted", false)
+      .eq("author_id", targetUserId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("[getUserPosts] error:", error.message);
+      return [];
+    }
+
+    return transformPosts(data || [], currentUserId, true);
+  } catch (err) {
+    console.error("[getUserPosts] unexpected error:", err);
+    return [];
+  }
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function transformPosts(

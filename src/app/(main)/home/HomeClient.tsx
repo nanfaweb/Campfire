@@ -10,6 +10,7 @@ import { Icon } from "@/components/Icon";
 import { Avatar } from "@/components/Avatar";
 import { FeedPost, Profile, FriendSuggestion, Comment } from "@/types/database";
 import { CreatePost } from "@/components/CreatePost";
+import Link from "next/link";
 
 // ── Inline critical styles ───────────────────────────────────────────────────
 const INLINE_STYLES = `
@@ -126,16 +127,20 @@ function PostCard({
       {/* Header */}
       <div className="p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Avatar
-            src={post.author.avatar_url}
-            alt={post.author.username}
-            size={40}
-          />
+          <Link href={`/profile/${post.author.username}`}>
+            <Avatar
+              src={post.author.avatar_url}
+              alt={post.author.username}
+              size={40}
+            />
+          </Link>
           <div>
             <div className="flex items-center gap-1">
-              <span className="font-bold text-sm text-zinc-900 font-[Space_Grotesk]">
-                {post.author.username}
-              </span>
+              <Link href={`/profile/${post.author.username}`}>
+                <span className="font-bold text-sm text-zinc-900 font-[Space_Grotesk] hover:underline">
+                  {post.author.username}
+                </span>
+              </Link>
               {post.author.is_verified && (
                 <span className="text-orange-500 text-xs">✨</span>
               )}
@@ -544,18 +549,22 @@ export default function HomeClient({
               suggestions.map((s) => (
                 <div key={s.id} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <Avatar
-                      src={s.avatar_url ?? ""}
-                      alt={s.username}
-                      size={32}
-                    />
+                    <Link href={`/profile/${s.username}`}>
+                      <Avatar
+                        src={s.avatar_url ?? ""}
+                        alt={s.username}
+                        size={32}
+                      />
+                    </Link>
                     <div>
-                      <p
-                        className="text-xs font-bold text-zinc-800"
-                        style={{ fontFamily: "Space Grotesk, sans-serif" }}
-                      >
-                        {s.username}
-                      </p>
+                      <Link href={`/profile/${s.username}`}>
+                        <p
+                          className="text-xs font-bold text-zinc-800 hover:underline"
+                          style={{ fontFamily: "Space Grotesk, sans-serif" }}
+                        >
+                          {s.username}
+                        </p>
+                      </Link>
                       <p className="text-[10px] text-zinc-400">
                         New to CampFire
                       </p>

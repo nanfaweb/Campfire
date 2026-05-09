@@ -35,6 +35,32 @@ export async function getCurrentProfile(): Promise<Profile | null> {
 }
 
 /**
+ * Fetch a profile by their unique username.
+ * Returns null if not found.
+ */
+export async function getProfileByUsername(username: string): Promise<Profile | null> {
+  const supabase = await createClient();
+
+  try {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("username", username)
+      .single();
+
+    if (error) {
+      console.error("[getProfileByUsername] error:", error.message);
+      return null;
+    }
+
+    return data as Profile;
+  } catch (err) {
+    console.error("[getProfileByUsername] unexpected error:", err);
+    return null;
+  }
+}
+
+/**
  * Fetch friend suggestions — profiles not yet connected to the current user.
  * Excludes existing friendships (any status).
  */

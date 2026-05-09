@@ -5,17 +5,18 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Icon } from "./Icon";
 
-const NAV_ITEMS = [
-  { icon: "home", label: "HOME", href: "/home" },
-  { icon: "explore", label: "EXPLORE", href: "/explore" },
-  { icon: "mail", label: "MESSAGES", href: "/messages" },
-  { icon: "notifications", label: "NOTIFICATIONS", href: "/notifications" },
-  { icon: "local_fire_department", label: "MARSHMALLOW", href: "/marshmallow" },
-  { icon: "settings", label: "SETTINGS", href: "/settings" },
-];
-
-export function Sidebar() {
+export function Sidebar({ currentUsername }: { currentUsername?: string }) {
   const pathname = usePathname();
+
+  const navItems = [
+    { icon: "home", label: "HOME", href: "/home" },
+    { icon: "explore", label: "EXPLORE", href: "/explore" },
+    { icon: "mail", label: "MESSAGES", href: "/messages" },
+    { icon: "notifications", label: "NOTIFICATIONS", href: "/notifications" },
+    ...(currentUsername ? [{ icon: "person", label: "PROFILE", href: `/profile/${currentUsername}` }] : []),
+    { icon: "local_fire_department", label: "MARSHMALLOW", href: "/marshmallow" },
+    { icon: "settings", label: "SETTINGS", href: "/settings" },
+  ];
 
   return (
     <nav className="fixed left-0 top-0 h-screen w-64 bg-white/40 backdrop-blur-md border-r border-orange-50/50 flex flex-col z-50">
@@ -29,7 +30,7 @@ export function Sidebar() {
       </div>
 
       <div className="flex-1 flex flex-col gap-1 mt-4 px-2">
-        {NAV_ITEMS.map(({ icon, label, href }) => {
+        {navItems.map(({ icon, label, href }) => {
           // Simple active state check. Could be refined based on actual routes.
           const active = pathname?.startsWith(href) || (pathname === "/" && href === "/home");
           

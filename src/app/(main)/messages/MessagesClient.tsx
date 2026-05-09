@@ -151,9 +151,9 @@ export default function MessagesClient({
                   <div
                     key={c.participant.id}
                     onClick={() => setActiveThreadUserId(c.participant.id)}
-                    className={`flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all duration-300 ${
+                    className={`flex items-center gap-4 p-5 rounded-[1.5rem] cursor-pointer transition-all duration-300 ${
                       isActive
-                        ? "bg-orange-50/50 border border-orange-100/50"
+                        ? "bg-orange-50/50 border border-orange-100 shadow-sm"
                         : "hover:bg-zinc-50 border border-transparent"
                     }`}
                   >
@@ -199,18 +199,19 @@ export default function MessagesClient({
         {activeConversation ? (
           <section className="flex-grow flex flex-col bg-[#FAFAFA]">
             {/* Chat header */}
-            <header className="px-6 py-4 bg-white border-b border-orange-50 flex items-center justify-between shadow-sm">
-              <div className="flex items-center gap-3">
+            <header className="px-8 py-5 bg-white border-b border-orange-50 flex items-center justify-between shadow-sm sticky top-0 z-10">
+              <div className="flex items-center gap-4">
                 <Avatar
                   src={activeConversation.participant.avatar_url}
                   alt={activeConversation.participant.username}
-                  size={40}
+                  size={44}
                 />
                 <div>
-                  <h3 className="font-bold text-zinc-900 font-[Space_Grotesk]">
+                  <h3 className="font-black text-zinc-900 font-[Space_Grotesk] text-lg">
                     {activeConversation.participant.display_name ||
                       activeConversation.participant.username}
                   </h3>
+                  <p className="text-[10px] uppercase tracking-widest text-orange-500 font-bold">Online</p>
                 </div>
               </div>
             </header>
@@ -227,13 +228,13 @@ export default function MessagesClient({
                     }`}
                   >
                     <div
-                      className={`max-w-xl p-4 shadow-sm ${
+                      className={`max-w-[70%] p-5 shadow-sm leading-relaxed ${
                         isMine
-                          ? "bg-[#843615] text-white rounded-2xl rounded-br-none"
-                          : "bg-white border border-orange-100 text-zinc-800 rounded-2xl rounded-bl-none"
+                          ? "bg-[#843615] text-white rounded-[1.5rem] rounded-br-none"
+                          : "bg-white border border-orange-100 text-zinc-800 rounded-[1.5rem] rounded-bl-none"
                       }`}
                     >
-                      <p className="text-sm">{msg.content}</p>
+                      <p className="text-sm md:text-base font-medium">{msg.content}</p>
                     </div>
                     <span className="text-[10px] text-zinc-400 font-bold uppercase mx-1">
                       {formatTime(msg.created_at)}
@@ -256,8 +257,8 @@ export default function MessagesClient({
                         sendMessage();
                       }
                     }}
-                    className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-3 text-sm focus:ring-1 focus:ring-orange-300 resize-none max-h-32 outline-none"
-                    placeholder="Write a message..."
+                    className="w-full bg-orange-50/30 border border-orange-100 rounded-3xl px-6 py-4 text-base focus:outline-none focus:ring-2 focus:ring-orange-200 resize-none max-h-48 transition-all"
+                    placeholder="Write a cozy message..."
                     rows={1}
                   />
                 </div>

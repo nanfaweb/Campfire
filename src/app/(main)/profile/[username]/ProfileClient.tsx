@@ -12,12 +12,18 @@ interface ProfileClientProps {
   profile: Profile;
   posts: FeedPost[];
   currentUserId: string;
+  isFollowingInitial: boolean;
+  initialFollowers: Profile[];
+  initialFollowing: Profile[];
 }
 
 export default function ProfileClient({
   profile,
   posts,
   currentUserId,
+  isFollowingInitial,
+  initialFollowers,
+  initialFollowing,
 }: ProfileClientProps) {
   const isOwnProfile = profile.id === currentUserId;
   const router = useRouter();
@@ -28,6 +34,10 @@ export default function ProfileClient({
   const [bio, setBio] = useState(profile.bio || "");
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  
+  const [following, setFollowing] = useState(isFollowingInitial);
+  const [showFollowersList, setShowFollowersList] = useState(false);
+  const [showFollowingList, setShowFollowingList] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -93,6 +103,31 @@ export default function ProfileClient({
     }
   };
 
+  const handleFollow = async () => {
+    if (following || isOwnProfile) return;
+    
+    setSaving(true);
+    // Optimistic update for counts if we were using state, but since we rely on props:
+    setFollowing(true);
+    
+    try {
+      const { error } = await supabase.from("friendships").insert({
+        requester_id: currentUserId,
+        addressee_id: profile.id,
+        status: "accepted",
+      });
+
+      if (error) throw error;
+      router.refresh();
+    } catch (error) {
+      setFollowing(false);
+      console.error("Error following:", error);
+      alert("Failed to follow user.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const dateStr = (d: string) =>
     new Date(d).toLocaleDateString("en-US", {
       month: "short",
@@ -136,14 +171,15 @@ export default function ProfileClient({
           {/* Info Area */}
           <div className="flex-1 pb-4">
             {isEditing ? (
-              <div className="space-y-4 max-w-lg">
+              <div className="space-y-6 max-w-2xl">
                 <div>
                   <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1 block">Display Name</label>
                   <input
                     type="text"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
-                    className="w-full bg-orange-50 border border-orange-200 rounded-xl px-4 py-2 focus:outline-none focus:border-orange-400 font-[Space_Grotesk]"
+                    className="w-full bg-orange-50/50 border border-orange-100 rounded-2xl px-5 py-3.5 text-base focus:outline-none focus:ring-2 focus:ring-orange-400/20 focus:border-orange-400 transition-all font-[Space_Grotesk]"
+                    placeholder="Enter display name..."
                   />
                 </div>
                 <div>
@@ -151,8 +187,9 @@ export default function ProfileClient({
                   <textarea
                     value={bio}
                     onChange={(e) => setBio(e.target.value)}
-                    rows={3}
-                    className="w-full bg-orange-50 border border-orange-200 rounded-xl px-4 py-2 focus:outline-none focus:border-orange-400 font-[Space_Grotesk] resize-none"
+                    rows={4}
+                    className="w-full bg-orange-50/50 border border-orange-100 rounded-2xl px-5 py-3.5 text-base focus:outline-none focus:ring-2 focus:ring-orange-400/20 focus:border-orange-400 transition-all font-[Space_Grotesk] resize-none"
+                    placeholder="Tell us your story..."
                   />
                 </div>
                 <div className="flex gap-3">
@@ -190,7 +227,27 @@ export default function ProfileClient({
 
                 <div className="flex items-center gap-6 text-sm font-semibold text-zinc-500">
                   <span className="flex items-center gap-1.5"><Icon name="calendar_today" size={18} /> Joined {dateStr(profile.created_at)}</span>
-                  {/* Add more stats if needed */}
+                </div>
+
+                <div className="flex gap-8 mt-8">
+                  <button 
+                    onClick={() => setShowFollowersList(true)}
+                    className="flex flex-col items-start group transition-all p-3 -m-3 rounded-2xl hover:bg-orange-50/50"
+                  >
+                    <span className="text-2xl font-black text-[#231a11] group-hover:text-orange-500 transition-colors">
+                      {initialFollowers.length}
+                    </span>
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-400 mt-1">Followers</span>
+                  </button>
+                  <button 
+                    onClick={() => setShowFollowingList(true)}
+                    className="flex flex-col items-start group transition-all p-3 -m-3 rounded-2xl hover:bg-orange-50/50"
+                  >
+                    <span className="text-2xl font-black text-[#231a11] group-hover:text-orange-500 transition-colors">
+                      {initialFollowing.length}
+                    </span>
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-400 mt-1">Following</span>
+                  </button>
                 </div>
               </div>
             )}
@@ -208,9 +265,15 @@ export default function ProfileClient({
                 </button>
               ) : (
                 <button
-                  className="bg-orange-500 text-white hover:bg-orange-600 px-8 py-2.5 rounded-xl font-bold shadow-md transition-colors text-sm"
+                  onClick={handleFollow}
+                  disabled={following || saving}
+                  className={`px-8 py-2.5 rounded-xl font-bold shadow-md transition-all text-sm
+                    ${following 
+                      ? "bg-zinc-100 text-zinc-400 cursor-not-allowed shadow-none" 
+                      : "bg-orange-500 text-white hover:bg-orange-600 active:scale-95"
+                    }`}
                 >
-                  Follow
+                  {following ? "Followed" : saving ? "..." : "Follow"}
                 </button>
               )}
             </div>
@@ -278,6 +341,62 @@ export default function ProfileClient({
           </div>
         )}
       </section>
+
+      {/* User Lists Modals */}
+      {(showFollowersList || showFollowingList) && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => { setShowFollowersList(false); setShowFollowingList(false); }}
+        >
+          <div 
+            className="bg-white w-full max-w-2xl mx-4 rounded-[2.5rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.3)] animate-in zoom-in-95 duration-300 border border-orange-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-10 border-b border-orange-50 flex items-center justify-between bg-gradient-to-r from-orange-50/30 to-white">
+              <div>
+                <h3 className="text-3xl font-black text-[#231a11] font-[Space_Grotesk]">
+                  {showFollowersList ? "Followers" : "Following"}
+                </h3>
+                <p className="text-sm text-zinc-400 font-medium mt-1">
+                  {showFollowersList ? initialFollowers.length : initialFollowing.length} people
+                </p>
+              </div>
+              <button 
+                onClick={() => { setShowFollowersList(false); setShowFollowingList(false); }}
+                className="w-12 h-12 flex items-center justify-center hover:bg-orange-100 hover:text-orange-600 rounded-2xl transition-all shadow-sm active:scale-90 bg-zinc-50"
+              >
+                <Icon name="close" size={28} />
+              </button>
+            </div>
+            
+            <div className="max-h-[60vh] min-h-[400px] overflow-y-auto p-8 space-y-6 no-scrollbar bg-white">
+              {(showFollowersList ? initialFollowers : initialFollowing).length === 0 ? (
+                <p className="text-center py-8 text-zinc-400 font-medium italic">
+                  {showFollowersList ? "No followers yet." : "Not following anyone yet."}
+                </p>
+              ) : (
+                (showFollowersList ? initialFollowers : initialFollowing).map((u) => (
+                  <Link 
+                    key={u.id} 
+                    href={`/profile/${u.username}`}
+                    onClick={() => { setShowFollowersList(false); setShowFollowingList(false); }}
+                    className="flex items-center gap-4 p-4 rounded-[1.5rem] hover:bg-orange-50 transition-all group border border-transparent hover:border-orange-100"
+                  >
+                    <Avatar src={u.avatar_url} alt={u.username} size={56} />
+                    <div className="flex-1">
+                      <p className="font-bold text-lg text-[#231a11] group-hover:text-orange-600 transition-colors">{u.display_name || u.username}</p>
+                      <p className="text-sm text-zinc-400">@{u.username}</p>
+                    </div>
+                    <div className="bg-zinc-50 p-2 rounded-xl group-hover:bg-orange-100 transition-colors">
+                      <Icon name="chevron_right" size={24} className="text-zinc-300 group-hover:text-orange-400" />
+                    </div>
+                  </Link>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

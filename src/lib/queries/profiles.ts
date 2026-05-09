@@ -151,3 +151,49 @@ export async function getFriends(currentUserId: string): Promise<Profile[]> {
     return [];
   }
 }
+
+/**
+ * Check if current user is following the target user.
+ */
+export async function isFollowing(currentUserId: string, targetUserId: string): Promise<boolean> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("friendships")
+    .select("id")
+    .eq("requester_id", currentUserId)
+    .eq("addressee_id", targetUserId)
+    .eq("status", "accepted")
+    .maybeSingle();
+
+  return !!data && !error;
+}
+
+/**
+ * Fetch profiles of users following the target user.
+ */
+export async function getFollowers(targetUserId: string): Promise<Profile[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("friendships")
+    .select("requester:profiles!requester_id(*)")
+    .eq("addressee_id", targetUserId)
+    .eq("status", "accepted");
+
+  if (error) return [];
+  return (data ?? []).map((f) => f.requester as Profile);
+}
+
+/**
+ * Fetch profiles of users the target user is following.
+ */
+export async function getFollowing(targetUserId: string): Promise<Profile[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("friendships")
+    .select("addressee:profiles!addressee_id(*)")
+    .eq("requester_id", targetUserId)
+    .eq("status", "accepted");
+
+  if (error) return [];
+  return (data ?? []).map((f) => f.addressee as Profile);
+}

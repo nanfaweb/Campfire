@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getCurrentProfile, getProfileByUsername } from "@/lib/queries/profiles";
+import { getCurrentProfile, getProfileByUsername, isFollowing, getFollowers, getFollowing } from "@/lib/queries/profiles";
 import { getUserPosts } from "@/lib/queries/posts";
 import ProfileClient from "@/app/(main)/profile/[username]/ProfileClient";
 
@@ -19,17 +19,24 @@ export default async function ProfilePage({
 
   const profile = await getProfileByUsername(username);
   if (!profile) {
-    // If user doesn't exist, maybe redirect to a 404 or just home for now
     redirect("/home");
   }
 
-  const posts = await getUserPosts(profile.id, currentProfile.id);
+  const [posts, followingStatus, followers, following] = await Promise.all([
+    getUserPosts(profile.id, currentProfile.id),
+    isFollowing(currentProfile.id, profile.id),
+    getFollowers(profile.id),
+    getFollowing(profile.id),
+  ]);
 
   return (
     <ProfileClient 
       profile={profile} 
       posts={posts} 
-      currentUserId={currentProfile.id} 
+      currentUserId={currentProfile.id}
+      isFollowingInitial={followingStatus}
+      initialFollowers={followers}
+      initialFollowing={following}
     />
   );
 }

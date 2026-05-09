@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import type { FeedPost, FriendSuggestion } from "@/types/database";
 import { createClient } from "@/utils/supabase/client";
 import { PostCard } from "@/components/PostCard";
+import { Avatar } from "@/components/Avatar";
 import Link from "next/link";
 
 interface ExploreClientProps {

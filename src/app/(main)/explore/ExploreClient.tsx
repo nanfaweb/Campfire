@@ -180,13 +180,21 @@ export default function ExploreClient({
                 key={post.id}
                 className="break-inside-avoid bg-white rounded-2xl shadow-[0_4px_20px_-2px_hsla(25,30%,20%,0.08)] border border-[rgba(255,107,43,0.1)] overflow-hidden"
               >
-                {post.media_urls.length > 0 && (
+                {post.video_link ? (
+                  <div className="aspect-video w-full bg-orange-50 overflow-hidden">
+                    <video
+                      src={post.video_link}
+                      controls
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : post.media_urls.length > 0 ? (
                   <img
                     src={post.media_urls[0]}
                     alt=""
                     className="w-full object-cover"
                   />
-                )}
+                ) : null}
                 <div className="p-6">
                   <div className="flex items-center gap-3 mb-3">
                     <Avatar

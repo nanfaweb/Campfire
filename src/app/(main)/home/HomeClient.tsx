@@ -151,7 +151,15 @@ function PostCard({
       </div>
 
       {/* Media */}
-      {post.media_urls.length > 0 && (
+      {post.video_link ? (
+        <div className="aspect-video w-full bg-orange-50 overflow-hidden">
+          <video
+            src={post.video_link}
+            controls
+            className="w-full h-full object-cover"
+          />
+        </div>
+      ) : post.media_urls.length > 0 ? (
         <div className="aspect-video w-full bg-orange-50 overflow-hidden">
           <img
             src={post.media_urls[0]}
@@ -159,7 +167,7 @@ function PostCard({
             className="w-full h-full object-cover"
           />
         </div>
-      )}
+      ) : null}
 
       {/* Body */}
       <div className="p-5">

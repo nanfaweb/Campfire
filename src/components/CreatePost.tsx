@@ -14,11 +14,9 @@ interface CreatePostProps {
 
 export function CreatePost({ currentUser, onPostCreated }: CreatePostProps) {
   const [content, setContent] = useState("");
-  const [videoLink, setVideoLink] = useState("");
   const [files, setFiles] = useState<File[]>([]);
-  const [previews, setPreviews] = useState<string[]>([]);
+  const [previews, setPreviews] = useState<{url: string, type: string}[]>([]);
   const [loading, setLoading] = useState(false);
-  const [showVideoInput, setShowVideoInput] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -30,7 +28,10 @@ export function CreatePost({ currentUser, onPostCreated }: CreatePostProps) {
       const selectedFiles = Array.from(e.target.files);
       setFiles((prev) => [...prev, ...selectedFiles]);
       
-      const newPreviews = selectedFiles.map((file) => URL.createObjectURL(file));
+      const newPreviews = selectedFiles.map((file) => ({
+        url: URL.createObjectURL(file),
+        type: file.type
+      }));
       setPreviews((prev) => [...prev, ...newPreviews]);
     }
   };
@@ -40,7 +41,7 @@ export function CreatePost({ currentUser, onPostCreated }: CreatePostProps) {
     const newPreviews = [...previews];
     
     // Revoke object URL to avoid memory leaks
-    URL.revokeObjectURL(newPreviews[index]);
+    URL.revokeObjectURL(newPreviews[index].url);
     
     newFiles.splice(index, 1);
     newPreviews.splice(index, 1);
@@ -61,21 +62,23 @@ export function CreatePost({ currentUser, onPostCreated }: CreatePostProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!content.trim() && files.length === 0 && !videoLink.trim()) return;
+    if (!content.trim() && files.length === 0) return;
 
     setLoading(true);
 
     try {
       const mediaUrls: string[] = [];
+      let uploadedVideoUrl: string | null = null;
 
       // 1. Upload files to Supabase Storage
       if (files.length > 0) {
         for (const file of files) {
+          const isVideo = file.type.startsWith("video/");
           const fileExt = file.name.split(".").pop();
           const fileName = `${currentUser.id}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
           const filePath = `posts/${fileName}`;
 
-          const { data, error: uploadError } = await supabase.storage
+          const { error: uploadError } = await supabase.storage
             .from("post-media")
             .upload(filePath, file);
 
@@ -85,7 +88,11 @@ export function CreatePost({ currentUser, onPostCreated }: CreatePostProps) {
             .from("post-media")
             .getPublicUrl(filePath);
 
-          mediaUrls.push(publicUrl);
+          if (isVideo && !uploadedVideoUrl) {
+            uploadedVideoUrl = publicUrl;
+          } else {
+            mediaUrls.push(publicUrl);
+          }
         }
       }
 
@@ -94,7 +101,7 @@ export function CreatePost({ currentUser, onPostCreated }: CreatePostProps) {
         author_id: currentUser.id,
         content: content.trim(),
         media_urls: mediaUrls,
-        video_link: videoLink.trim() || null,
+        video_link: uploadedVideoUrl,
         visibility: "public",
       });
 
@@ -102,10 +109,8 @@ export function CreatePost({ currentUser, onPostCreated }: CreatePostProps) {
 
       // 3. Success feedback & Reset
       setContent("");
-      setVideoLink("");
       setFiles([]);
       setPreviews([]);
-      setShowVideoInput(false);
       if (textareaRef.current) textareaRef.current.style.height = "auto";
       
       if (onPostCreated) {
@@ -140,9 +145,13 @@ export function CreatePost({ currentUser, onPostCreated }: CreatePostProps) {
           {/* Media Previews */}
           {previews.length > 0 && (
             <div className="flex gap-3 overflow-x-auto pb-4 mt-2 no-scrollbar">
-              {previews.map((url, i) => (
-                <div key={url} className="relative flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden group">
-                  <img src={url} alt="Preview" className="w-full h-full object-cover" />
+              {previews.map((preview, i) => (
+                <div key={preview.url} className="relative flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden group">
+                  {preview.type.startsWith("video/") ? (
+                    <video src={preview.url} className="w-full h-full object-cover" />
+                  ) : (
+                    <img src={preview.url} alt="Preview" className="w-full h-full object-cover" />
+                  )}
                   <button
                     onClick={() => removeFile(i)}
                     className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -154,26 +163,6 @@ export function CreatePost({ currentUser, onPostCreated }: CreatePostProps) {
             </div>
           )}
 
-          {/* Video Input Toggle */}
-          {showVideoInput && (
-            <div className="mt-2 mb-4 animate-in fade-in slide-in-from-top-2 duration-300">
-              <div className="relative">
-                <input
-                  type="text"
-                  value={videoLink}
-                  onChange={(e) => setVideoLink(e.target.value)}
-                  placeholder="Paste YouTube or Vimeo link..."
-                  className="w-full bg-orange-50/50 border border-orange-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-300 transition-all font-[Space_Grotesk]"
-                />
-                <button 
-                  onClick={() => { setShowVideoInput(false); setVideoLink(""); }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
-                >
-                  <Icon name="close" size={18} />
-                </button>
-              </div>
-            </div>
-          )}
 
           <div className="flex items-center justify-between mt-4 pt-4 border-t border-zinc-100">
             <div className="flex items-center gap-2">
@@ -181,32 +170,17 @@ export function CreatePost({ currentUser, onPostCreated }: CreatePostProps) {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className="p-2.5 rounded-full hover:bg-orange-50 text-zinc-400 hover:text-orange-500 transition-all group"
-                title="Add Images"
+                title="Add Media"
               >
                 <Icon name="image" size={24} className="group-hover:scale-110 transition-transform" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowVideoInput(!showVideoInput)}
-                className={`p-2.5 rounded-full hover:bg-orange-50 transition-all group ${showVideoInput ? 'text-orange-500 bg-orange-50' : 'text-zinc-400'}`}
-                title="Add Video Link"
-              >
-                <Icon name="videocam" size={24} className="group-hover:scale-110 transition-transform" />
-              </button>
-              <button
-                type="button"
-                className="p-2.5 rounded-full hover:bg-orange-50 text-zinc-400 hover:text-orange-500 transition-all group"
-                title="Location"
-              >
-                <Icon name="location_on" size={24} className="group-hover:scale-110 transition-transform" />
               </button>
             </div>
 
             <button
               onClick={handleSubmit}
-              disabled={loading || (!content.trim() && files.length === 0 && !videoLink.trim())}
+              disabled={loading || (!content.trim() && files.length === 0)}
               className={`px-6 py-2.5 rounded-full font-bold text-sm transition-all flex items-center gap-2 shadow-md
-                ${loading || (!content.trim() && files.length === 0 && !videoLink.trim())
+                ${loading || (!content.trim() && files.length === 0)
                   ? "bg-zinc-100 text-zinc-400 cursor-not-allowed shadow-none"
                   : "bg-gradient-to-r from-orange-500 to-rose-500 text-white hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
                 }`}
@@ -228,7 +202,7 @@ export function CreatePost({ currentUser, onPostCreated }: CreatePostProps) {
         type="file"
         ref={fileInputRef}
         onChange={handleFileChange}
-        accept="image/*"
+        accept="image/*,video/*"
         multiple
         className="hidden"
       />

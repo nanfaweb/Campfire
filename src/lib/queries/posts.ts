@@ -12,7 +12,7 @@ export async function getFeedPosts(userId: string): Promise<FeedPost[]> {
   const supabase = await createClient();
 
   try {
-    // Fetch accepted friends first; home feed should only show friend posts.
+    // Fetch accepted friends; home feed shows friend posts and own posts.
     const { data: friendships, error: friendshipsError } = await supabase
       .from("friendships")
       .select("requester_id, addressee_id")
@@ -32,9 +32,7 @@ export async function getFeedPosts(userId: string): Promise<FeedPost[]> {
       )
     );
 
-    if (friendIds.length === 0) {
-      return [];
-    }
+    const authorIds = [userId, ...friendIds];
 
     const { data, error } = await supabase
       .from("posts")
@@ -44,11 +42,11 @@ export async function getFeedPosts(userId: string): Promise<FeedPost[]> {
         author:profiles!author_id(*),
         likes_agg:likes(count),
         comments_agg:comments(count),
-        user_likes:likes!inner(user_id)
+        user_likes:likes(user_id)
       `
       )
       .eq("is_deleted", false)
-      .in("author_id", friendIds)
+      .in("author_id", authorIds)
       .order("created_at", { ascending: false })
       .limit(30);
 
@@ -66,7 +64,7 @@ export async function getFeedPosts(userId: string): Promise<FeedPost[]> {
         `
         )
         .eq("is_deleted", false)
-        .in("author_id", friendIds)
+        .in("author_id", authorIds)
         .order("created_at", { ascending: false })
         .limit(30);
 

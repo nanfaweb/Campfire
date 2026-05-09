@@ -4,9 +4,12 @@
 // Receives server-fetched data as props; handles likes, saves, Marshmallow chat.
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/utils/supabase/client";
 import { Icon } from "@/components/Icon";
 import { Avatar } from "@/components/Avatar";
-import type { FeedPost, Profile, FriendSuggestion } from "@/types/database";
+import { FeedPost, Profile, FriendSuggestion, Comment } from "@/types/database";
+import { CreatePost } from "@/components/CreatePost";
 
 // ── Inline critical styles ───────────────────────────────────────────────────
 const INLINE_STYLES = `
@@ -34,7 +37,15 @@ function PostCard({
   const [liked, setLiked] = useState(post.user_has_liked);
   const [saved, setSaved] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likes_count);
+  const [commentCount, setCommentCount] = useState(post.comments_count);
   const [busy, setBusy] = useState(false);
+
+  const [showComments, setShowComments] = useState(false);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [newComment, setNewComment] = useState("");
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [submittingComment, setSubmittingComment] = useState(false);
+  const supabase = createClient();
 
   async function toggleLike() {
     if (busy) return;
@@ -63,6 +74,46 @@ function PostCard({
     } finally {
       setBusy(false);
     }
+  }
+
+  async function handleToggleComments() {
+    if (!showComments && comments.length === 0) {
+      setLoadingComments(true);
+      const { data, error } = await supabase
+        .from("comments")
+        .select(`*, author:profiles!author_id(*)`)
+        .eq("post_id", post.id)
+        .eq("is_deleted", false)
+        .order("created_at", { ascending: true });
+      
+      if (!error && data) {
+        setComments(data as unknown as Comment[]);
+      }
+      setLoadingComments(false);
+    }
+    setShowComments(!showComments);
+  }
+
+  async function handleSubmitComment(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newComment.trim()) return;
+    setSubmittingComment(true);
+    const { data, error } = await supabase
+      .from("comments")
+      .insert({
+        post_id: post.id,
+        author_id: currentUserId,
+        content: newComment.trim(),
+      })
+      .select(`*, author:profiles!author_id(*)`)
+      .single();
+
+    if (!error && data) {
+      setComments((prev) => [...prev, data as unknown as Comment]);
+      setNewComment("");
+      setCommentCount((c) => c + 1);
+    }
+    setSubmittingComment(false);
   }
 
   const dateStr = new Date(post.created_at).toLocaleDateString("en-US", {
@@ -134,14 +185,17 @@ function PostCard({
             <span className="text-xs text-zinc-400">{likeCount}</span>
           </button>
 
-          <button className="flex items-center gap-1.5 group">
+          <button 
+            onClick={handleToggleComments}
+            className="flex items-center gap-1.5 group"
+          >
             <Icon
               name="chat_bubble"
               size={20}
               className="text-zinc-300 group-hover:text-orange-400 transition-colors"
             />
             <span className="text-xs text-zinc-400">
-              {post.comments_count}
+              {commentCount}
             </span>
           </button>
 
@@ -169,6 +223,59 @@ function PostCard({
             />
           </button>
         </div>
+
+        {/* Comments Section */}
+        {showComments && (
+          <div className="mt-5 pt-4 border-t border-zinc-100 animate-in fade-in slide-in-from-top-2 duration-300">
+            {loadingComments ? (
+              <div className="py-4 text-center text-xs text-zinc-400 animate-pulse">
+                Loading comments...
+              </div>
+            ) : (
+              <div className="space-y-4 mb-4 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+                {comments.length === 0 ? (
+                  <p className="text-xs text-center text-zinc-400 py-2">No comments yet. Be the first!</p>
+                ) : (
+                  comments.map((comment) => (
+                    <div key={comment.id} className="flex gap-3">
+                      <Avatar src={comment.author?.avatar_url} alt={comment.author?.username} size={28} />
+                      <div className="flex-1 bg-zinc-50 rounded-2xl rounded-tl-none p-3">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-bold text-xs text-zinc-900 font-[Space_Grotesk]">
+                            {comment.author?.username}
+                          </span>
+                        </div>
+                        <p className="text-sm text-zinc-600">{comment.content}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+            
+            {/* New Comment Input */}
+            <form onSubmit={handleSubmitComment} className="flex items-center gap-3 mt-2">
+              <Avatar src={post.author.avatar_url} alt="You" size={32} /> {/* Note: Should ideally be current user avatar, but we only have currentUserId here. Falling back to simple UI */}
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="Add a comment..."
+                  disabled={submittingComment}
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-full pl-4 pr-10 py-2 text-sm focus:outline-none focus:border-orange-300 focus:bg-white transition-all font-[Space_Grotesk] disabled:opacity-50"
+                />
+                <button
+                  type="submit"
+                  disabled={!newComment.trim() || submittingComment}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-orange-500 hover:text-orange-600 disabled:text-zinc-300 disabled:hover:text-zinc-300 transition-colors"
+                >
+                  <Icon name="send" size={18} fill={!!newComment.trim()} />
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
       </div>
     </article>
   );
@@ -201,6 +308,9 @@ export default function HomeClient({
 }: HomeClientProps) {
   const [marshmallowMsg, setMarshmallowMsg] = useState("");
   const [marshmallowLoading, setMarshmallowLoading] = useState(false);
+  const [followState, setFollowState] = useState<Record<string, boolean>>({});
+  const router = useRouter();
+  const supabase = createClient();
 
   async function askMarshmallow(prompt: string) {
     setMarshmallowLoading(true);
@@ -220,6 +330,30 @@ export default function HomeClient({
       setMarshmallowMsg("Oops! My spark fizzled. Try again? 🔥");
     } finally {
       setMarshmallowLoading(false);
+    }
+  }
+
+  async function handleFollow(targetUserId: string) {
+    setFollowState((prev) => ({ ...prev, [targetUserId]: true }));
+    try {
+      const { error } = await supabase.from("friendships").insert({
+        requester_id: currentUser.id,
+        addressee_id: targetUserId,
+        status: "accepted", // Auto-accept for "Follow" model; change to 'pending' if you want mutual approval
+      });
+
+      if (error) {
+        if (error.code === "23505") {
+          // Already following
+          return;
+        }
+        throw error;
+      }
+      
+      router.refresh();
+    } catch (error) {
+      setFollowState((prev) => ({ ...prev, [targetUserId]: false }));
+      console.error("Error following user:", error);
     }
   }
 
@@ -262,6 +396,9 @@ export default function HomeClient({
             </div>
           ))}
         </div>
+
+        {/* Create Post Section */}
+        <CreatePost currentUser={currentUser} />
 
         {/* Marshmallow chip */}
         <div className="mb-8">
@@ -416,12 +553,23 @@ export default function HomeClient({
                       </p>
                     </div>
                   </div>
-                  <button
-                    className="text-[10px] font-bold uppercase tracking-widest text-[#a83900] hover:underline"
-                    style={{ fontFamily: "Space Grotesk, sans-serif" }}
-                  >
-                    Follow
-                  </button>
+                  {followState[s.id] ? (
+                    <button
+                      disabled
+                      className="text-[10px] font-bold uppercase tracking-widest text-zinc-400"
+                      style={{ fontFamily: "Space Grotesk, sans-serif" }}
+                    >
+                      Following
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleFollow(s.id)}
+                      className="text-[10px] font-bold uppercase tracking-widest text-[#a83900] hover:underline"
+                      style={{ fontFamily: "Space Grotesk, sans-serif" }}
+                    >
+                      Follow
+                    </button>
+                  )}
                 </div>
               ))
             )}

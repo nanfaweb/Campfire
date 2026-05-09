@@ -7,6 +7,8 @@ import { getCurrentProfile, getFriendSuggestions, getFriends } from "@/lib/queri
 import { getFeedPosts } from "@/lib/queries/posts";
 import HomeClient from "@/app/(main)/home/HomeClient";
 
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
   // 1. Auth gate — redirect if not logged in
   const profile = await getCurrentProfile();

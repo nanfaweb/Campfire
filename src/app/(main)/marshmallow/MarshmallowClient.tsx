@@ -60,7 +60,9 @@ export default function MarshmallowClient({
         };
         setMessages((prev) => [...prev, aiMsg]);
       } else {
-        throw new Error("Failed to get response");
+        const errorData = await res.json().catch(() => ({}));
+        console.error("Marshmallow API Error:", errorData);
+        throw new Error(errorData.error || "Failed to get response");
       }
     } catch (e) {
       console.error(e);

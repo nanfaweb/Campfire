@@ -436,7 +436,7 @@ create table public.post_embeddings (
   post_id     uuid not null references public.posts(id) on delete cascade,
   chunk_index integer not null default 0,       -- which chunk within the post
   chunk_text  text not null,
-  embedding   vector(1536),                     -- OpenAI text-embedding-3-small dimensions
+  embedding   vector(768),                     -- OpenAI text-embedding-3-small dimensions
   created_at  timestamptz not null default now(),
 
   unique(post_id, chunk_index)
@@ -481,18 +481,19 @@ create policy "Embeddings: readable via server for RAG"
 -- ============================================================
 
 create or replace function public.match_post_embeddings(
-  query_embedding vector(1536),
+  query_embedding vector(768),
   match_count     int     default 5,
   match_threshold float   default 0.7,
   requesting_user uuid    default null
 )
 returns table (
-  id          uuid,
-  post_id     uuid,
-  chunk_text  text,
-  similarity  float,
-  post_author uuid,
-  visibility  public.post_visibility
+  id              uuid,
+  post_id         uuid,
+  chunk_text      text,
+  similarity      float,
+  post_author     uuid,
+  author_username text,
+  visibility      public.post_visibility
 )
 language sql stable security definer as $$
   select
@@ -501,6 +502,7 @@ language sql stable security definer as $$
     pe.chunk_text,
     1 - (pe.embedding <=> query_embedding) as similarity,
     p.author_id as post_author,
+    pr.username as author_username,
     p.visibility
   from public.post_embeddings pe
   join public.posts p on p.id = pe.post_id
@@ -508,13 +510,12 @@ language sql stable security definer as $$
   where
     p.is_deleted = false
     and (
-      -- Always include public posts
+      -- 1. Public posts
       p.visibility = 'public'
-      -- Include requester's own private posts only if they granted consent
-      or (
-        p.author_id = requesting_user
-        and pr.marshmallow_consent = true
-      )
+      -- 2. User's own posts
+      or (p.author_id = requesting_user)
+      -- 3. Friends' posts
+      or (p.visibility = 'friends' and public.are_friends(p.author_id, requesting_user))
     )
     and 1 - (pe.embedding <=> query_embedding) > match_threshold
   order by pe.embedding <=> query_embedding
@@ -618,3 +619,14 @@ $$;
 
 -- To schedule with pg_cron (enable pg_cron extension first):
 -- select cron.schedule('purge-deleted-posts', '0 3 * * *', 'select public.purge_deleted_posts()');
+-- Marshmallow RAG Index Search
+create or replace function public.match_marshmallow_index(
+  query_text text,
+  requesting_user uuid,
+  match_threshold float default 0.5,
+  match_count int default 5
+) returns table (id uuid, post_id uuid, chunk_text text, similarity float) language plpgsql security definer as 
+begin
+  return query select pe.id, pe.post_id, pe.chunk_text, 0.99::float from public.post_embeddings pe join public.posts p on p.id = pe.post_id where (p.author_id = requesting_user or p.visibility = 'public') and p.is_deleted = false limit match_count;
+end;
+;

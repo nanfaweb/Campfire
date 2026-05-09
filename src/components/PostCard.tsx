@@ -11,9 +11,29 @@ import Link from "next/link";
 interface PostCardProps {
   post: FeedPost;
   currentUserId: string;
+  highlight?: string;
 }
 
-export function PostCard({ post, currentUserId }: PostCardProps) {
+const Highlight = ({ text, highlight }: { text: string; highlight: string }) => {
+  if (!highlight || !highlight.trim()) return <>{text}</>;
+  const regex = new RegExp(`(${highlight})`, "gi");
+  const parts = text.split(regex);
+  return (
+    <>
+      {parts.map((part, i) =>
+        regex.test(part) ? (
+          <span key={i} className="bg-orange-200 text-orange-900 px-0.5 rounded">
+            {part}
+          </span>
+        ) : (
+          <span key={i}>{part}</span>
+        )
+      )}
+    </>
+  );
+};
+
+export function PostCard({ post, currentUserId, highlight }: PostCardProps) {
   const [liked, setLiked] = useState(post.user_has_liked);
   const [saved, setSaved] = useState(post.user_has_saved);
   const [likeCount, setLikeCount] = useState(post.likes_count);
@@ -139,7 +159,7 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
             <div className="flex items-center gap-1">
               <Link href={`/profile/${post.author.username}`}>
                 <span className="font-bold text-sm text-zinc-900 font-[Space_Grotesk] hover:underline">
-                  {post.author.username}
+                  <Highlight text={post.author.username} highlight={highlight || ""} />
                 </span>
               </Link>
               {post.author.is_verified && <span className="text-orange-500 text-xs">✨</span>}
@@ -167,7 +187,9 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
 
       {/* Body */}
       <div className="p-5">
-        <p className="text-sm text-zinc-600 leading-relaxed mb-4">{post.content}</p>
+        <p className="text-sm text-zinc-600 leading-relaxed mb-4">
+          <Highlight text={post.content} highlight={highlight || ""} />
+        </p>
 
         {/* Interactions */}
         <div className="flex items-center justify-between border-t border-orange-50 pt-4">

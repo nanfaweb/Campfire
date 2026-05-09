@@ -24,6 +24,26 @@ export default function ExploreClient({
   const [followState, setFollowState] = useState<Record<string, boolean>>(
     Object.fromEntries(recommendedUsers.map((u) => [u.id, false]))
   );
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const Highlight = ({ text, highlight }: { text: string; highlight: string }) => {
+    if (!highlight || !highlight.trim()) return <>{text}</>;
+    const regex = new RegExp(`(${highlight})`, "gi");
+    const parts = text.split(regex);
+    return (
+      <>
+        {parts.map((part, i) =>
+          regex.test(part) ? (
+            <span key={i} className="bg-orange-200 text-orange-900 px-0.5 rounded">
+              {part}
+            </span>
+          ) : (
+            <span key={i}>{part}</span>
+          )
+        )}
+      </>
+    );
+  };
 
   const supabase = createClient();
   const router = useRouter();
@@ -61,6 +81,18 @@ export default function ExploreClient({
       day: "numeric",
     });
 
+  const filteredUsers = recommendedUsers.filter(u => 
+    u.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (u.display_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (u.bio || "").toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const filteredPosts = posts.filter(p => 
+    p.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    p.author.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (p.author.display_name || "").toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <main className="ml-64 flex-1 pt-8 px-10 max-w-5xl">
       {/* Header */}
@@ -77,6 +109,8 @@ export default function ExploreClient({
               className="bg-white border-none rounded-full px-6 py-2 w-64 shadow-[0_4px_20px_-2px_hsla(25,30%,20%,0.08)] focus:ring-2 focus:ring-[#ff6b2b] transition-all text-sm outline-none"
               placeholder="Search the woods..."
               type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
             <span className="material-symbols-outlined absolute right-4 top-2 text-[#8d7167] text-base">
               search
@@ -113,12 +147,12 @@ export default function ExploreClient({
         </div>
 
         <div className="grid grid-cols-3 gap-6">
-          {recommendedUsers.length === 0 ? (
+          {filteredUsers.length === 0 ? (
             <p className="col-span-3 text-center text-zinc-400 py-8">
-              No new faces to show right now.
+              {searchTerm ? "No users match your search." : "No new faces to show right now."}
             </p>
           ) : (
-            recommendedUsers.map((user) => (
+            filteredUsers.map((user) => (
               <div
                 key={user.id}
                 className="bg-white p-6 rounded-2xl shadow-[0_4px_20px_-2px_hsla(25,30%,20%,0.08)] border border-[rgba(255,107,43,0.1)] flex flex-col items-center text-center group"
@@ -138,11 +172,11 @@ export default function ExploreClient({
                     className="font-bold text-base text-[#231a11] hover:underline"
                     style={{ fontFamily: "Space Grotesk" }}
                   >
-                    {user.display_name || user.username}
+                    <Highlight text={user.display_name || user.username} highlight={searchTerm} />
                   </h4>
                 </Link>
                 <p className="text-[12px] font-bold uppercase tracking-[0.05em] text-[#8d7167] mb-6">
-                  {user.bio?.slice(0, 30) || "CampFire member"}
+                  <Highlight text={user.bio?.slice(0, 30) || "CampFire member"} highlight={searchTerm} />
                 </p>
                 {followState[user.id] ? (
                   <button
@@ -175,18 +209,20 @@ export default function ExploreClient({
         >
           Recent sparks
         </h3>
-        {posts.length === 0 ? (
+        {filteredPosts.length === 0 ? (
           <p className="text-center text-zinc-400 py-8">
-            No sparks to explore yet. Check back soon! ✨
+            {searchTerm ? "No sparks match your search." : "No sparks to explore yet. Check back soon! ✨"}
           </p>
         ) : (
           <div className="columns-1 md:columns-2 gap-6 space-y-6">
-            {posts.map((post) => (
-              <PostCard
-                key={post.id}
-                post={post}
-                currentUserId={currentUserId}
-              />
+            {filteredPosts.map((post) => (
+              <div key={post.id} className="break-inside-avoid">
+                <PostCard
+                  post={post}
+                  currentUserId={currentUserId}
+                  highlight={searchTerm}
+                />
+              </div>
             ))}
           </div>
         )}

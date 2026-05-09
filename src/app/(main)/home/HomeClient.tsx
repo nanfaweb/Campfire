@@ -58,6 +58,9 @@ export default function HomeClient({
   const [marshmallowMsg, setMarshmallowMsg] = useState("");
   const [marshmallowLoading, setMarshmallowLoading] = useState(false);
   const [followState, setFollowState] = useState<Record<string, boolean>>({});
+  const [homeSearch, setHomeSearch] = useState("");
+  const [searchResults, setSearchResults] = useState<Profile[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -103,12 +106,68 @@ export default function HomeClient({
     }
   }
 
+  async function handleHomeSearch(val: string) {
+    setHomeSearch(val);
+    if (!val.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+    const { data } = await supabase
+      .from("profiles")
+      .select("*")
+      .or(`username.ilike.%${val}%,display_name.ilike.%${val}%`)
+      .limit(5);
+    
+    if (data) setSearchResults(data as Profile[]);
+    setIsSearching(false);
+  }
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && homeSearch.trim()) {
+      router.push(`/explore?q=${encodeURIComponent(homeSearch.trim())}`);
+    }
+  };
+
   return (
     <>
       <style>{INLINE_STYLES}</style>
 
       {/* ── Feed ──────────────────────────────────────────────── */}
       <main className="ml-64 mr-80 flex-1 pt-8 px-8 max-w-2xl">
+        {/* Search Bar */}
+        <div className="relative mb-8 z-50">
+          <div className="relative">
+            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400">search</span>
+            <input
+              type="text"
+              value={homeSearch}
+              onChange={(e) => handleHomeSearch(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
+              placeholder="Search for friends or sparks... (Enter to explore)"
+              className="w-full bg-white border border-orange-50 rounded-2xl py-4 pl-12 pr-6 shadow-sm focus:ring-2 focus:ring-orange-200 focus:border-orange-200 outline-none transition-all text-sm font-medium"
+            />
+          </div>
+          
+          {searchResults.length > 0 && (
+            <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-2xl shadow-2xl border border-orange-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+              {searchResults.map((user) => (
+                <Link 
+                  key={user.id} 
+                  href={`/profile/${user.username}`}
+                  className="flex items-center gap-3 p-4 hover:bg-orange-50 transition-colors"
+                >
+                  <Avatar src={user.avatar_url} alt={user.username} size={40} />
+                  <div>
+                    <p className="text-sm font-bold text-zinc-900">{user.display_name || user.username}</p>
+                    <p className="text-[10px] text-zinc-400 uppercase tracking-widest">@{user.username}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
         {/* Stories / Active Friends */}
         <div className="flex gap-5 overflow-x-auto pb-8 no-scrollbar">
           <div className="flex-shrink-0 flex flex-col items-center gap-2">

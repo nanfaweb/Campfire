@@ -2,8 +2,8 @@
 
 // ── ExploreClient — Interactive Explore Component ────────────────────────────
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { FeedPost, FriendSuggestion } from "@/types/database";
 import { createClient } from "@/utils/supabase/client";
 import { PostCard } from "@/components/PostCard";
@@ -47,6 +47,13 @@ export default function ExploreClient({
 
   const supabase = createClient();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Sync with query parameter (from Home page)
+  useEffect(() => {
+    const q = searchParams.get("q");
+    if (q) setSearchTerm(q);
+  }, [searchParams]);
 
   async function toggleFollow(userId: string) {
     const isFollowing = followState[userId];

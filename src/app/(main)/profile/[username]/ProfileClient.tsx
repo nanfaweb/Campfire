@@ -43,6 +43,7 @@ export default function ProfileClient({
   const [showFollowingList, setShowFollowingList] = useState(false);
 
   // Story state
+  const [allStories, setAllStories] = useState(stories);
   const [isViewingStories, setIsViewingStories] = useState(false);
   const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
 
@@ -168,7 +169,31 @@ export default function ProfileClient({
     }, 5000);
 
     return () => clearTimeout(timer);
-  }, [isViewingStories, currentStoryIndex, stories.length]);
+  }, [isViewingStories, currentStoryIndex, allStories.length]);
+
+  async function handleDeleteStory(storyId: string) {
+    if (!confirm("Remove this spark from your story? 🕯️")) return;
+    try {
+      const { error } = await supabase
+        .from("stories")
+        .delete()
+        .eq("id", storyId);
+
+      if (error) throw error;
+      
+      const updatedStories = allStories.filter(s => s.id !== storyId);
+      setAllStories(updatedStories);
+      
+      if (updatedStories.length === 0) {
+        setIsViewingStories(false);
+      } else if (currentStoryIndex >= updatedStories.length) {
+        setCurrentStoryIndex(prev => Math.max(0, prev - 1));
+      }
+    } catch (err) {
+      console.error("Error deleting story:", err);
+      alert("Failed to delete story.");
+    }
+  }
 
   const dateStr = (d: string) =>
     new Date(d).toLocaleDateString("en-US", {
@@ -196,9 +221,9 @@ export default function ProfileClient({
           {/* Avatar Area with Story support */}
           <div className="relative group">
             <div 
-              className={`rounded-full p-1 shadow-xl transition-transform ${stories.length > 0 ? 'story-ring cursor-pointer hover:scale-105' : 'bg-white'} ${uploadingAvatar ? 'animate-pulse' : ''}`}
+              className={`rounded-full p-1 shadow-xl transition-transform ${allStories.length > 0 ? 'story-ring cursor-pointer hover:scale-105' : 'bg-white'} ${uploadingAvatar ? 'animate-pulse' : ''}`}
               onClick={() => {
-                if (stories.length > 0) {
+                if (allStories.length > 0) {
                   setIsViewingStories(true);
                   setCurrentStoryIndex(0);
                 }
@@ -448,7 +473,7 @@ export default function ProfileClient({
       {isViewingStories && stories.length > 0 && (
         <div className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center animate-in fade-in duration-300">
           <div className="absolute top-4 left-0 w-full px-4 flex gap-1.5 z-50">
-            {stories.map((_, idx) => (
+            {allStories.map((_, idx) => (
               <div key={idx} className="h-1 flex-1 bg-white/20 rounded-full overflow-hidden">
                 <div 
                   key={`${profile.id}-${idx}-${currentStoryIndex}`}
@@ -465,17 +490,31 @@ export default function ProfileClient({
                 {profile.display_name || profile.username}
               </span>
               <span className="text-[10px] text-white/60 font-bold uppercase tracking-wider">
-                {new Date(stories[currentStoryIndex].created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                {new Date(allStories[currentStoryIndex].created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
             </div>
           </div>
 
-          <button 
-            onClick={() => setIsViewingStories(false)}
-            className="absolute top-10 right-4 text-white p-2 hover:bg-white/10 rounded-full z-50 transition-colors"
-          >
-            <Icon name="close" size={28} />
-          </button>
+          <div className="absolute top-10 right-4 flex items-center gap-2 z-50">
+            {allStories[currentStoryIndex].author_id === currentUserId && (
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteStory(allStories[currentStoryIndex].id);
+                }}
+                className="text-white p-2 hover:bg-red-500/20 rounded-full transition-colors group"
+                title="Delete Story"
+              >
+                <Icon name="delete" size={24} className="group-hover:text-red-400" />
+              </button>
+            )}
+            <button 
+              onClick={() => setIsViewingStories(false)}
+              className="text-white p-2 hover:bg-white/10 rounded-full transition-colors"
+            >
+              <Icon name="close" size={28} />
+            </button>
+          </div>
 
           <div className="relative w-full h-[90vh] max-w-[500px] aspect-[9/16] bg-zinc-900 rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/10">
             <div 
@@ -489,7 +528,7 @@ export default function ProfileClient({
               className="absolute right-0 top-0 w-1/4 h-full cursor-pointer z-30"
               onClick={(e) => {
                 e.stopPropagation();
-                if (currentStoryIndex < stories.length - 1) {
+                if (currentStoryIndex < allStories.length - 1) {
                   setCurrentStoryIndex(prev => prev + 1);
                 } else {
                   setIsViewingStories(false);
@@ -513,7 +552,7 @@ export default function ProfileClient({
               <button 
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (currentStoryIndex < stories.length - 1) {
+                  if (currentStoryIndex < allStories.length - 1) {
                     setCurrentStoryIndex(prev => prev + 1);
                   } else {
                     setIsViewingStories(false);
@@ -525,9 +564,9 @@ export default function ProfileClient({
               </button>
             </div>
 
-            {stories[currentStoryIndex].media_type === "video" ? (
+            {allStories[currentStoryIndex].media_type === "video" ? (
               <video 
-                src={stories[currentStoryIndex].media_url} 
+                src={allStories[currentStoryIndex].media_url} 
                 autoPlay 
                 muted={false}
                 playsInline
@@ -535,7 +574,7 @@ export default function ProfileClient({
               />
             ) : (
               <img 
-                src={stories[currentStoryIndex].media_url} 
+                src={allStories[currentStoryIndex].media_url} 
                 alt="story" 
                 className="w-full h-full object-cover select-none"
               />

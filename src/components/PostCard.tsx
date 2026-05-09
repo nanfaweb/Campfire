@@ -46,6 +46,13 @@ export function PostCard({ post, currentUserId, highlight }: PostCardProps) {
   const [loadingComments, setLoadingComments] = useState(false);
   const [submittingComment, setSubmittingComment] = useState(false);
   
+  // Edit/Delete state
+  const [showMenu, setShowMenu] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedContent, setEditedContent] = useState(post.content);
+  const [isDeleted, setIsDeleted] = useState(false);
+  const [saving, setSaving] = useState(false);
+  
   const router = useRouter();
   const supabase = createClient();
 
@@ -147,6 +154,52 @@ export function PostCard({ post, currentUserId, highlight }: PostCardProps) {
     setSubmittingComment(false);
   }
 
+  async function handleSaveEdit() {
+    if (!editedContent.trim() || saving) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("posts")
+        .update({ content: editedContent.trim() })
+        .eq("id", post.id);
+
+      if (error) throw error;
+      setIsEditing(false);
+      router.refresh();
+    } catch (err) {
+      console.error("Error updating post:", err);
+      alert("Failed to update spark.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDeletePost() {
+    if (!confirm("Are you sure you want to extinguish this spark forever? 🕯️")) return;
+    setBusy(true);
+    try {
+      const res = await fetch("/api/posts/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ postId: post.id }),
+      });
+
+      if (!res.ok) {
+        const json = await res.json();
+        throw new Error(json.error || "Failed to delete spark");
+      }
+
+      setIsDeleted(true);
+    } catch (err: any) {
+      console.error("Delete error:", err);
+      alert(`Failed to delete spark: ${err.message || "Something went wrong"}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (isDeleted) return null;
+
   return (
     <article className="custom-card-border rounded-xl overflow-hidden bg-white shadow-[0_4px_24px_rgba(253,235,208,0.2)]">
       {/* Header */}
@@ -155,23 +208,47 @@ export function PostCard({ post, currentUserId, highlight }: PostCardProps) {
           <Link href={`/profile/${post.author.username}`}>
             <Avatar src={post.author.avatar_url} alt={post.author.username} size={40} />
           </Link>
-          <div>
-            <div className="flex items-center gap-1">
-              <Link href={`/profile/${post.author.username}`}>
-                <span className="font-bold text-sm text-zinc-900 font-[Space_Grotesk] hover:underline">
-                  <Highlight text={post.author.username} highlight={highlight || ""} />
-                </span>
-              </Link>
-              {post.author.is_verified && <span className="text-orange-500 text-xs">✨</span>}
-            </div>
-            <span className="text-[10px] font-[Space_Grotesk] tracking-wide uppercase text-zinc-400">
-              {dateStr}
-            </span>
+          <div className="flex flex-col">
+            <Link href={`/profile/${post.author.username}`} className="font-bold text-sm text-[#231a11] hover:text-orange-500 transition-colors leading-tight font-[Space_Grotesk]">
+              {post.author.display_name || post.author.username}
+            </Link>
+            <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">{dateStr}</span>
           </div>
         </div>
-        <button className="text-zinc-300 hover:text-orange-500 transition-colors">
-          <Icon name="more_horiz" size={20} />
-        </button>
+
+        {post.author_id === currentUserId && (
+          <div className="relative">
+            <button 
+              onClick={() => setShowMenu(!showMenu)}
+              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-zinc-100 text-zinc-400 transition-colors"
+            >
+              <Icon name="more_horiz" size={20} />
+            </button>
+
+            {showMenu && (
+              <>
+                <div 
+                  className="fixed inset-0 z-40" 
+                  onClick={() => setShowMenu(false)}
+                />
+                <div className="absolute right-0 top-full mt-1 w-40 bg-white rounded-2xl shadow-xl border border-zinc-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <button 
+                    onClick={() => { setIsEditing(true); setShowMenu(false); }}
+                    className="w-full px-4 py-2 text-left text-sm font-semibold text-zinc-600 hover:bg-orange-50 hover:text-orange-600 flex items-center gap-2 transition-colors"
+                  >
+                    <Icon name="edit" size={18} /> Edit Spark
+                  </button>
+                  <button 
+                    onClick={() => { handleDeletePost(); setShowMenu(false); }}
+                    className="w-full px-4 py-2 text-left text-sm font-semibold text-red-500 hover:bg-red-50 flex items-center gap-2 transition-colors"
+                  >
+                    <Icon name="delete" size={18} /> Delete Spark
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Media */}
@@ -187,9 +264,35 @@ export function PostCard({ post, currentUserId, highlight }: PostCardProps) {
 
       {/* Body */}
       <div className="p-5">
-        <p className="text-sm text-zinc-600 leading-relaxed mb-4">
-          <Highlight text={post.content} highlight={highlight || ""} />
-        </p>
+        {isEditing ? (
+          <div className="space-y-3 mb-4 animate-in fade-in slide-in-from-top-1 duration-200">
+            <textarea
+              value={editedContent}
+              onChange={(e) => setEditedContent(e.target.value)}
+              className="w-full p-4 rounded-2xl bg-orange-50/50 border border-orange-100 focus:outline-none focus:ring-2 focus:ring-orange-400/20 focus:border-orange-400 text-zinc-800 text-sm resize-none font-[Space_Grotesk]"
+              rows={3}
+            />
+            <div className="flex gap-2 justify-end">
+              <button 
+                onClick={() => { setIsEditing(false); setEditedContent(post.content); }}
+                className="px-4 py-1.5 rounded-xl text-xs font-bold text-zinc-500 hover:bg-zinc-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleSaveEdit}
+                disabled={saving}
+                className="px-4 py-1.5 rounded-xl text-xs font-bold bg-orange-500 text-white hover:bg-orange-600 disabled:opacity-50 transition-colors shadow-sm"
+              >
+                {saving ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-zinc-800 text-[15px] leading-relaxed mb-4 whitespace-pre-wrap font-[Space_Grotesk]">
+            <Highlight text={post.content} highlight={highlight || ""} />
+          </p>
+        )}
 
         {/* Interactions */}
         <div className="flex items-center justify-between border-t border-orange-50 pt-4">

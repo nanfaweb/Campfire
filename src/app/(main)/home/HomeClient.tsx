@@ -72,6 +72,7 @@ export default function HomeClient({
   const [isSearching, setIsSearching] = useState(false);
   
   // Stories State
+  const [allStories, setAllStories] = useState(initialStories);
   const [activeStoryUserId, setActiveStoryUserId] = useState<string | null>(null);
   const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
   const [isUploadingStory, setIsUploadingStory] = useState(false);
@@ -151,18 +152,19 @@ export default function HomeClient({
 
   // ── Story Logic ────────────────────────────────────────────────────────────
   
-  const groupedStories = initialStories.reduce((acc, story) => {
-    if (!acc[story.author_id]) {
-      acc[story.author_id] = {
-        author: story.author!,
-        stories: []
-      };
-    }
-    acc[story.author_id].stories.push(story);
+  const storyAuthors = Array.from(new Set(allStories.map(s => s.author_id))).map(authorId => {
+    const authorStories = allStories.filter(s => s.author_id === authorId);
+    return {
+      author: authorStories[0].author!,
+      stories: authorStories
+    };
+  });
+  
+  const groupedStories = storyAuthors.reduce((acc, entry) => {
+    acc[entry.author.id] = entry;
     return acc;
   }, {} as Record<string, { author: Profile, stories: Story[] }>);
 
-  const storyAuthors = Object.values(groupedStories);
   const activeUserStories = activeStoryUserId ? groupedStories[activeStoryUserId]?.stories : [];
 
   const handleStoryUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -202,8 +204,34 @@ export default function HomeClient({
       alert("Failed to post story. 🔥");
     } finally {
       setIsUploadingStory(false);
+      if (storyInputRef.current) storyInputRef.current.value = "";
+      router.refresh();
     }
   };
+
+  async function handleDeleteStory(storyId: string) {
+    if (!confirm("Remove this spark from your story? 🕯️")) return;
+    try {
+      const { error } = await supabase
+        .from("stories")
+        .delete()
+        .eq("id", storyId);
+
+      if (error) throw error;
+      
+      const updatedStories = allStories.filter(s => s.id !== storyId);
+      setAllStories(updatedStories);
+      
+      if (updatedStories.filter(s => s.author_id === activeStoryUserId).length === 0) {
+        setActiveStoryUserId(null);
+      } else if (currentStoryIndex >= updatedStories.filter(s => s.author_id === activeStoryUserId).length) {
+        setCurrentStoryIndex(prev => Math.max(0, prev - 1));
+      }
+    } catch (err) {
+      console.error("Error deleting story:", err);
+      alert("Failed to delete story.");
+    }
+  }
 
   useEffect(() => {
     if (!activeStoryUserId) return;
@@ -226,7 +254,7 @@ export default function HomeClient({
     }, 5000);
 
     return () => clearTimeout(timer);
-  }, [activeStoryUserId, currentStoryIndex, activeUserStories.length]);
+  }, [activeStoryUserId, currentStoryIndex, activeUserStories.length, storyAuthors]);
 
   return (
     <>
@@ -272,9 +300,9 @@ export default function HomeClient({
           <div className="flex-shrink-0 flex flex-col items-center gap-2">
             <div className="relative group">
               <div 
-                className={`p-[3px] rounded-full transition-transform group-hover:scale-105 cursor-pointer ${initialStories.some(s => s.author_id === currentUser.id) ? 'story-ring' : ''}`}
+                className={`p-[3px] rounded-full transition-transform group-hover:scale-105 cursor-pointer ${allStories.some(s => s.author_id === currentUser.id) ? 'story-ring' : ''}`}
                 onClick={() => {
-                  if (initialStories.some(s => s.author_id === currentUser.id)) {
+                  if (allStories.some(s => s.author_id === currentUser.id)) {
                     setActiveStoryUserId(currentUser.id);
                     setCurrentStoryIndex(0);
                   } else {
@@ -432,12 +460,26 @@ export default function HomeClient({
             </div>
           </div>
 
-          <button 
-            onClick={() => setActiveStoryUserId(null)}
-            className="absolute top-10 right-4 text-white p-2 hover:bg-white/10 rounded-full z-50 transition-colors"
-          >
-            <Icon name="close" size={28} />
-          </button>
+          <div className="absolute top-10 right-14 flex items-center gap-2 z-50">
+            {activeUserStories[currentStoryIndex].author_id === currentUser.id && (
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteStory(activeUserStories[currentStoryIndex].id);
+                }}
+                className="text-white p-2 hover:bg-red-500/20 rounded-full transition-colors group"
+                title="Delete Story"
+              >
+                <Icon name="delete" size={24} className="group-hover:text-red-400" />
+              </button>
+            )}
+            <button 
+              onClick={() => setActiveStoryUserId(null)}
+              className="text-white p-2 hover:bg-white/10 rounded-full transition-colors"
+            >
+              <Icon name="close" size={28} />
+            </button>
+          </div>
 
           {/* Story Content Container */}
           <div className="relative w-full h-[90vh] max-w-[500px] aspect-[9/16] bg-zinc-900 rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/10">

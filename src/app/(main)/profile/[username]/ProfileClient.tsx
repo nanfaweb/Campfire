@@ -194,30 +194,36 @@ export default function ProfileClient({
         
         <div className="relative z-10 flex flex-col md:flex-row gap-8 items-start md:items-end mt-12">
           {/* Avatar Area with Story support */}
-          <div 
-            className={`relative group ${stories.length > 0 ? 'cursor-pointer' : ''}`}
-            onClick={() => {
-              if (stories.length > 0) {
-                setIsViewingStories(true);
-                setCurrentStoryIndex(0);
-              }
-            }}
-          >
-            <div className={`rounded-full p-1 shadow-xl transition-transform ${stories.length > 0 ? 'story-ring group-hover:scale-105' : 'bg-white'} ${uploadingAvatar ? 'animate-pulse' : ''}`}>
+          <div className="relative group">
+            <div 
+              className={`rounded-full p-1 shadow-xl transition-transform ${stories.length > 0 ? 'story-ring cursor-pointer hover:scale-105' : 'bg-white'} ${uploadingAvatar ? 'animate-pulse' : ''}`}
+              onClick={() => {
+                if (stories.length > 0) {
+                  setIsViewingStories(true);
+                  setCurrentStoryIndex(0);
+                }
+              }}
+            >
               <div className="bg-white p-1 rounded-full">
                 <Avatar src={profile.avatar_url} alt={profile.username} size={132} />
               </div>
             </div>
             
             {isOwnProfile && (
-              <button 
-                onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
-                disabled={uploadingAvatar}
-                className="absolute bottom-4 right-4 bg-orange-500 text-white p-2.5 rounded-full shadow-lg hover:bg-orange-600 transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-50 z-10"
-                title="Change Avatar"
-              >
-                <Icon name="photo_camera" size={20} />
-              </button>
+              <div className="absolute bottom-4 right-4 z-20">
+                <button 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    fileInputRef.current?.click();
+                  }}
+                  disabled={uploadingAvatar}
+                  className="bg-orange-500 text-white p-2.5 rounded-full shadow-lg hover:bg-orange-600 transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                  title="Change Avatar"
+                >
+                  <Icon name="photo_camera" size={20} />
+                </button>
+              </div>
             )}
             <input 
               type="file" 

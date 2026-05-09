@@ -6,7 +6,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { FeedPost, FriendSuggestion } from "@/types/database";
 import { createClient } from "@/utils/supabase/client";
-import { Avatar } from "@/components/Avatar";
+import { PostCard } from "@/components/PostCard";
 import Link from "next/link";
 
 interface ExploreClientProps {
@@ -181,73 +181,11 @@ export default function ExploreClient({
         ) : (
           <div className="columns-1 md:columns-2 gap-6 space-y-6">
             {posts.map((post) => (
-              <article
+              <PostCard
                 key={post.id}
-                className="break-inside-avoid bg-white rounded-2xl shadow-[0_4px_20px_-2px_hsla(25,30%,20%,0.08)] border border-[rgba(255,107,43,0.1)] overflow-hidden"
-              >
-                {post.video_link ? (
-                  <div className="aspect-video w-full bg-orange-50 overflow-hidden">
-                    <video
-                      src={post.video_link}
-                      controls
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                ) : post.media_urls.length > 0 ? (
-                  <img
-                    src={post.media_urls[0]}
-                    alt=""
-                    className="w-full object-cover"
-                  />
-                ) : null}
-                <div className="p-6">
-                  <div className="flex items-center gap-3 mb-3">
-                    <Link href={`/profile/${post.author.username}`}>
-                      <Avatar
-                        src={post.author.avatar_url}
-                        alt={post.author.username}
-                        size={32}
-                      />
-                    </Link>
-                    <Link href={`/profile/${post.author.username}`}>
-                      <span
-                        className="font-bold text-sm text-[#231a11] hover:underline"
-                        style={{ fontFamily: "Space Grotesk" }}
-                      >
-                        {post.author.username}
-                      </span>
-                    </Link>
-                    <span className="text-xs text-[#8d7167] ml-auto">
-                      {dateStr(post.created_at)}
-                    </span>
-                  </div>
-
-                  {post.content && (
-                    <p className="text-base text-[#58423a] mb-4">
-                      {post.content}
-                    </p>
-                  )}
-
-                  <div className="flex items-center gap-4">
-                    <button className="flex items-center gap-1 text-[#8d7167] group">
-                      <span className="material-symbols-outlined text-xl">
-                        local_fire_department
-                      </span>
-                      <span className="text-sm font-bold">
-                        {post.likes_count}
-                      </span>
-                    </button>
-                    <button className="flex items-center gap-1 text-[#8d7167]">
-                      <span className="material-symbols-outlined text-xl">
-                        chat_bubble
-                      </span>
-                      <span className="text-sm font-bold">
-                        {post.comments_count}
-                      </span>
-                    </button>
-                  </div>
-                </div>
-              </article>
+                post={post}
+                currentUserId={currentUserId}
+              />
             ))}
           </div>
         )}

@@ -159,13 +159,13 @@ export async function isFollowing(currentUserId: string, targetUserId: string): 
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("friendships")
-    .select("id")
+    .select("id, status")
     .eq("requester_id", currentUserId)
     .eq("addressee_id", targetUserId)
-    .eq("status", "accepted")
     .maybeSingle();
 
-  return !!data && !error;
+  // Consider it "following" if a record exists and it's accepted
+  return !!data && data.status === "accepted" && !error;
 }
 
 /**

@@ -15,6 +15,7 @@ export function Sidebar({ currentUsername }: { currentUsername?: string }) {
     { icon: "notifications", label: "NOTIFICATIONS", href: "/notifications" },
     ...(currentUsername ? [{ icon: "person", label: "PROFILE", href: `/profile/${currentUsername}` }] : []),
     { icon: "local_fire_department", label: "MARSHMALLOW", href: "/marshmallow" },
+    { icon: "bookmark", label: "SAVED", href: "/saved" },
     { icon: "settings", label: "SETTINGS", href: "/settings" },
   ];
 

@@ -274,6 +274,10 @@ create policy "Addressee can update (accept/decline)"
   on public.friendships for update
   using (auth.uid() = addressee_id or auth.uid() = requester_id);
 
+create policy "Users can delete their own friendships"
+  on public.friendships for delete
+  using (auth.uid() = requester_id or auth.uid() = addressee_id);
+
 
 -- ============================================================
 -- 7. MESSAGES

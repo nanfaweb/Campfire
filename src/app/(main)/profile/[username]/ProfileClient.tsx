@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { Profile, FeedPost } from "@/types/database";
 import { createClient } from "@/utils/supabase/client";
 import { Avatar } from "@/components/Avatar";
+import { PostCard } from "@/components/PostCard";
 import { Icon } from "@/components/Icon";
 import Link from "next/link";
 
@@ -103,26 +104,46 @@ export default function ProfileClient({
     }
   };
 
-  const handleFollow = async () => {
-    if (following || isOwnProfile) return;
+  const handleToggleFollow = async () => {
+    if (isOwnProfile || saving) return;
     
     setSaving(true);
-    // Optimistic update for counts if we were using state, but since we rely on props:
-    setFollowing(true);
+    const wasFollowing = following;
+    setFollowing(!wasFollowing);
     
     try {
-      const { error } = await supabase.from("friendships").insert({
-        requester_id: currentUserId,
-        addressee_id: profile.id,
-        status: "accepted",
-      });
+      if (wasFollowing) {
+        // Unfollow: delete the friendship record
+        const { error } = await supabase
+          .from("friendships")
+          .delete()
+          .eq("requester_id", currentUserId)
+          .eq("addressee_id", profile.id);
 
-      if (error) throw error;
+        if (error) throw error;
+      } else {
+        // Follow: insert a new friendship record
+        const { error } = await supabase.from("friendships").insert({
+          requester_id: currentUserId,
+          addressee_id: profile.id,
+          status: "accepted",
+        });
+
+        if (error) {
+          // If already exists, we consider it a success/already followed
+          if (error.code === "23505") {
+            console.log("Already following user.");
+          } else {
+            throw error;
+          }
+        }
+      }
+      
       router.refresh();
-    } catch (error) {
-      setFollowing(false);
-      console.error("Error following:", error);
-      alert("Failed to follow user.");
+    } catch (error: any) {
+      setFollowing(wasFollowing);
+      console.error("Error toggling follow:", error?.message || error);
+      alert(`Failed to update follow status: ${error?.message || "Unknown error"}`);
     } finally {
       setSaving(false);
     }
@@ -265,15 +286,15 @@ export default function ProfileClient({
                 </button>
               ) : (
                 <button
-                  onClick={handleFollow}
-                  disabled={following || saving}
-                  className={`px-8 py-2.5 rounded-xl font-bold shadow-md transition-all text-sm
+                  onClick={handleToggleFollow}
+                  disabled={saving}
+                  className={`px-8 py-2.5 rounded-xl font-bold shadow-md transition-all text-sm active:scale-95
                     ${following 
-                      ? "bg-zinc-100 text-zinc-400 cursor-not-allowed shadow-none" 
-                      : "bg-orange-500 text-white hover:bg-orange-600 active:scale-95"
+                      ? "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 hover:text-red-600" 
+                      : "bg-orange-500 text-white hover:bg-orange-600"
                     }`}
                 >
-                  {following ? "Followed" : saving ? "..." : "Follow"}
+                  {saving ? "..." : following ? "Unfollow" : "Follow"}
                 </button>
               )}
             </div>
@@ -294,49 +315,11 @@ export default function ProfileClient({
         ) : (
           <div className="columns-1 md:columns-2 gap-6 space-y-6">
             {posts.map((post) => (
-              <article
+              <PostCard
                 key={post.id}
-                className="break-inside-avoid bg-white rounded-2xl shadow-[0_4px_20px_-2px_hsla(25,30%,20%,0.08)] border border-[rgba(255,107,43,0.1)] overflow-hidden"
-              >
-                {/* Media */}
-                {post.video_link ? (
-                  <div className="aspect-video w-full bg-orange-50 overflow-hidden">
-                    <video src={post.video_link} controls className="w-full h-full object-cover" />
-                  </div>
-                ) : post.media_urls.length > 0 ? (
-                  <div className="aspect-video w-full bg-orange-50 overflow-hidden">
-                    <img src={post.media_urls[0]} alt="" className="w-full h-full object-cover" />
-                  </div>
-                ) : null}
-                
-                {/* Body */}
-                <div className="p-6">
-                  <div className="flex items-center gap-3 mb-3">
-                    <Avatar src={post.author.avatar_url} alt={post.author.username} size={32} />
-                    <span className="font-bold text-sm text-[#231a11] font-[Space_Grotesk]">
-                      {post.author.username}
-                    </span>
-                    <span className="text-xs text-[#8d7167] ml-auto">
-                      {dateStr(post.created_at)}
-                    </span>
-                  </div>
-
-                  {post.content && (
-                    <p className="text-base text-[#58423a] mb-4">{post.content}</p>
-                  )}
-
-                  <div className="flex items-center gap-4">
-                    <button className="flex items-center gap-1.5 text-[#8d7167] group cursor-default">
-                      <Icon name="favorite" fill={post.user_has_liked} size={20} className={post.user_has_liked ? "text-red-500" : "text-zinc-300"} />
-                      <span className="text-sm font-bold">{post.likes_count}</span>
-                    </button>
-                    <button className="flex items-center gap-1.5 text-[#8d7167] cursor-default">
-                      <Icon name="chat_bubble" size={20} className="text-zinc-300" />
-                      <span className="text-sm font-bold">{post.comments_count}</span>
-                    </button>
-                  </div>
-                </div>
-              </article>
+                post={post}
+                currentUserId={currentUserId}
+              />
             ))}
           </div>
         )}

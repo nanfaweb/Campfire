@@ -42,7 +42,8 @@ export async function getFeedPosts(userId: string): Promise<FeedPost[]> {
         author:profiles!author_id(*),
         likes_agg:likes(count),
         comments_agg:comments(count),
-        user_likes:likes(user_id)
+        user_likes:likes(user_id),
+        user_saved:saved_posts(user_id)
       `
       )
       .eq("is_deleted", false)
@@ -137,7 +138,8 @@ export async function getUserPosts(targetUserId: string, currentUserId: string):
         author:profiles!author_id(*),
         likes_agg:likes(count),
         comments_agg:comments(count),
-        user_likes:likes(user_id)
+        user_likes:likes(user_id),
+        user_saved:saved_posts(user_id)
       `
       )
       .eq("is_deleted", false)
@@ -158,10 +160,45 @@ export async function getUserPosts(targetUserId: string, currentUserId: string):
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+/**
+ * Fetch all posts saved by the user.
+ */
+export async function getSavedPosts(userId: string): Promise<FeedPost[]> {
+  const supabase = await createClient();
+
+  try {
+    const { data, error } = await supabase
+      .from("saved_posts")
+      .select(`
+        post:posts(
+          *,
+          author:profiles!author_id(*),
+          likes_agg:likes(count),
+          comments_agg:comments(count),
+          user_likes:likes(user_id),
+          user_saved:saved_posts(user_id)
+        )
+      `)
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("[getSavedPosts] error:", error.message);
+      return [];
+    }
+
+    const posts = (data || []).map((row: any) => row.post);
+    return transformPosts(posts, userId, true);
+  } catch (err) {
+    console.error("[getSavedPosts] unexpected error:", err);
+    return [];
+  }
+}
+
 function transformPosts(
   raw: any[],
   userId: string,
-  hasUserLikes: boolean
+  checkUserInteractions: boolean
 ): FeedPost[] {
   return raw.map((row) => ({
     id: row.id,
@@ -177,9 +214,14 @@ function transformPosts(
     author: row.author,
     likes_count: row.likes_agg?.[0]?.count ?? 0,
     comments_count: row.comments_agg?.[0]?.count ?? 0,
-    user_has_liked: hasUserLikes
+    user_has_liked: checkUserInteractions
       ? (row.user_likes ?? []).some(
           (l: { user_id: string }) => l.user_id === userId
+        )
+      : false,
+    user_has_saved: checkUserInteractions
+      ? (row.user_saved ?? []).some(
+          (s: { user_id: string }) => s.user_id === userId
         )
       : false,
   }));

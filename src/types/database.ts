@@ -51,6 +51,7 @@ export interface FeedPost extends Post {
   likes_count: number;
   comments_count: number;
   user_has_liked: boolean;
+  user_has_saved: boolean;
 }
 
 // ── Comments ─────────────────────────────────────────────────────────────────

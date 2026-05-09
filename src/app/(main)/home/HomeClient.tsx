@@ -8,8 +8,9 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { Icon } from "@/components/Icon";
 import { Avatar } from "@/components/Avatar";
-import { FeedPost, Profile, FriendSuggestion, Comment } from "@/types/database";
+import { PostCard } from "@/components/PostCard";
 import { CreatePost } from "@/components/CreatePost";
+import type { FeedPost, Profile, FriendSuggestion } from "@/types/database";
 import Link from "next/link";
 
 // ── Inline critical styles ───────────────────────────────────────────────────
@@ -26,277 +27,9 @@ const INLINE_STYLES = `
   .no-scrollbar { -ms-overflow-style:none; scrollbar-width:none; }
 `;
 
-// ── PostCard ─────────────────────────────────────────────────────────────────
-
-function PostCard({
-  post,
-  currentUserId,
-}: {
-  post: FeedPost;
-  currentUserId: string;
-}) {
-  const [liked, setLiked] = useState(post.user_has_liked);
-  const [saved, setSaved] = useState(false);
-  const [likeCount, setLikeCount] = useState(post.likes_count);
-  const [commentCount, setCommentCount] = useState(post.comments_count);
-  const [busy, setBusy] = useState(false);
-
-  const [showComments, setShowComments] = useState(false);
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [newComment, setNewComment] = useState("");
-  const [loadingComments, setLoadingComments] = useState(false);
-  const [submittingComment, setSubmittingComment] = useState(false);
-  const supabase = createClient();
-
-  async function toggleLike() {
-    if (busy) return;
-    setBusy(true);
-
-    // Optimistic update
-    const wasLiked = liked;
-    setLiked(!wasLiked);
-    setLikeCount((c) => (wasLiked ? c - 1 : c + 1));
-
-    try {
-      const res = await fetch("/api/likes", {
-        method: wasLiked ? "DELETE" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ post_id: post.id }),
-      });
-
-      if (!res.ok) {
-        // Revert on failure
-        setLiked(wasLiked);
-        setLikeCount((c) => (wasLiked ? c + 1 : c - 1));
-      }
-    } catch {
-      setLiked(wasLiked);
-      setLikeCount((c) => (wasLiked ? c + 1 : c - 1));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleToggleComments() {
-    if (!showComments && comments.length === 0) {
-      setLoadingComments(true);
-      const { data, error } = await supabase
-        .from("comments")
-        .select(`*, author:profiles!author_id(*)`)
-        .eq("post_id", post.id)
-        .eq("is_deleted", false)
-        .order("created_at", { ascending: true });
-      
-      if (!error && data) {
-        setComments(data as unknown as Comment[]);
-      }
-      setLoadingComments(false);
-    }
-    setShowComments(!showComments);
-  }
-
-  async function handleSubmitComment(e: React.FormEvent) {
-    e.preventDefault();
-    if (!newComment.trim()) return;
-    setSubmittingComment(true);
-    const { data, error } = await supabase
-      .from("comments")
-      .insert({
-        post_id: post.id,
-        author_id: currentUserId,
-        content: newComment.trim(),
-      })
-      .select(`*, author:profiles!author_id(*)`)
-      .single();
-
-    if (!error && data) {
-      setComments((prev) => [...prev, data as unknown as Comment]);
-      setNewComment("");
-      setCommentCount((c) => c + 1);
-    }
-    setSubmittingComment(false);
-  }
-
-  const dateStr = new Date(post.created_at).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
-
-  return (
-    <article className="custom-card-border rounded-xl overflow-hidden">
-      {/* Header */}
-      <div className="p-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link href={`/profile/${post.author.username}`}>
-            <Avatar
-              src={post.author.avatar_url}
-              alt={post.author.username}
-              size={40}
-            />
-          </Link>
-          <div>
-            <div className="flex items-center gap-1">
-              <Link href={`/profile/${post.author.username}`}>
-                <span className="font-bold text-sm text-zinc-900 font-[Space_Grotesk] hover:underline">
-                  {post.author.username}
-                </span>
-              </Link>
-              {post.author.is_verified && (
-                <span className="text-orange-500 text-xs">✨</span>
-              )}
-            </div>
-            <span className="text-[10px] font-[Space_Grotesk] tracking-wide uppercase text-zinc-400">
-              {dateStr}
-            </span>
-          </div>
-        </div>
-        <button className="text-zinc-300 hover:text-orange-500 transition-colors">
-          <Icon name="more_horiz" size={20} />
-        </button>
-      </div>
-
-      {/* Media */}
-      {post.video_link ? (
-        <div className="aspect-video w-full bg-orange-50 overflow-hidden">
-          <video
-            src={post.video_link}
-            controls
-            className="w-full h-full object-cover"
-          />
-        </div>
-      ) : post.media_urls.length > 0 ? (
-        <div className="aspect-video w-full bg-orange-50 overflow-hidden">
-          <img
-            src={post.media_urls[0]}
-            alt="Post media"
-            className="w-full h-full object-cover"
-          />
-        </div>
-      ) : null}
-
-      {/* Body */}
-      <div className="p-5">
-        <p className="text-sm text-zinc-600 leading-relaxed">{post.content}</p>
-
-        {/* Actions */}
-        <div className="mt-5 flex items-center gap-5">
-          <button
-            onClick={toggleLike}
-            disabled={busy}
-            className="flex items-center gap-1.5 group"
-          >
-            <Icon
-              name="favorite"
-              fill={liked}
-              size={20}
-              className={`transition-colors ${
-                liked
-                  ? "text-red-500"
-                  : "text-zinc-300 group-hover:text-red-400"
-              }`}
-            />
-            <span className="text-xs text-zinc-400">{likeCount}</span>
-          </button>
-
-          <button 
-            onClick={handleToggleComments}
-            className="flex items-center gap-1.5 group"
-          >
-            <Icon
-              name="chat_bubble"
-              size={20}
-              className="text-zinc-300 group-hover:text-orange-400 transition-colors"
-            />
-            <span className="text-xs text-zinc-400">
-              {commentCount}
-            </span>
-          </button>
-
-          <button className="flex items-center gap-1.5 group">
-            <Icon
-              name="send"
-              size={20}
-              className="text-zinc-300 group-hover:text-orange-400 transition-colors"
-            />
-          </button>
-
-          <button
-            onClick={() => setSaved((v) => !v)}
-            className="ml-auto"
-          >
-            <Icon
-              name="bookmark"
-              fill={saved}
-              size={20}
-              className={`transition-colors ${
-                saved
-                  ? "text-orange-500"
-                  : "text-zinc-300 hover:text-orange-400"
-              }`}
-            />
-          </button>
-        </div>
-
-        {/* Comments Section */}
-        {showComments && (
-          <div className="mt-5 pt-4 border-t border-zinc-100 animate-in fade-in slide-in-from-top-2 duration-300">
-            {loadingComments ? (
-              <div className="py-4 text-center text-xs text-zinc-400 animate-pulse">
-                Loading comments...
-              </div>
-            ) : (
-              <div className="space-y-4 mb-4 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
-                {comments.length === 0 ? (
-                  <p className="text-xs text-center text-zinc-400 py-2">No comments yet. Be the first!</p>
-                ) : (
-                  comments.map((comment) => (
-                    <div key={comment.id} className="flex gap-3">
-                      <Avatar src={comment.author?.avatar_url} alt={comment.author?.username} size={28} />
-                      <div className="flex-1 bg-zinc-50 rounded-2xl rounded-tl-none p-3">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-bold text-xs text-zinc-900 font-[Space_Grotesk]">
-                            {comment.author?.username}
-                          </span>
-                        </div>
-                        <p className="text-sm text-zinc-600">{comment.content}</p>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-            
-            {/* New Comment Input */}
-            <form onSubmit={handleSubmitComment} className="flex items-center gap-3 mt-2">
-              <Avatar src={post.author.avatar_url} alt="You" size={32} /> {/* Note: Should ideally be current user avatar, but we only have currentUserId here. Falling back to simple UI */}
-              <div className="flex-1 relative">
-                <input
-                  type="text"
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Add a comment..."
-                  disabled={submittingComment}
-                  className="w-full bg-zinc-50 border border-zinc-200 rounded-full pl-4 pr-10 py-2 text-sm focus:outline-none focus:border-orange-300 focus:bg-white transition-all font-[Space_Grotesk] disabled:opacity-50"
-                />
-                <button
-                  type="submit"
-                  disabled={!newComment.trim() || submittingComment}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-orange-500 hover:text-orange-600 disabled:text-zinc-300 disabled:hover:text-zinc-300 transition-colors"
-                >
-                  <Icon name="send" size={18} fill={!!newComment.trim()} />
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-      </div>
-    </article>
-  );
-}
-
-// ── Marshmallow Prompts ──────────────────────────────────────────────────────
-
 const MARSHMALLOW_PROMPTS = [
+  "What is the vibe today? ✨",
+  "Write a cozy story 📖",
   "Show me local tea shops 🍵",
   "Creative prompt of the day 🎨",
   "Write a morning haiku 📜",
@@ -352,14 +85,11 @@ export default function HomeClient({
       const { error } = await supabase.from("friendships").insert({
         requester_id: currentUser.id,
         addressee_id: targetUserId,
-        status: "accepted", // Auto-accept for "Follow" model; change to 'pending' if you want mutual approval
+        status: "accepted", 
       });
 
       if (error) {
-        if (error.code === "23505") {
-          // Already following
-          return;
-        }
+        if (error.code === "23505") return;
         throw error;
       }
       

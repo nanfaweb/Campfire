@@ -6,6 +6,7 @@ import { createClient } from "@/utils/supabase/client";
 import { Icon } from "@/components/Icon";
 import { Avatar } from "@/components/Avatar";
 import { FeedPost, Comment } from "@/types/database";
+import { ingestToLocal } from "@/lib/marshmallow-sync";
 import Link from "next/link";
 
 interface PostCardProps {
@@ -60,6 +61,16 @@ export function PostCard({ post, currentUserId, highlight }: PostCardProps) {
     month: "short",
     day: "numeric",
   });
+
+  // Passive Ingestion for "Just happened rn" items (e.g. from friends)
+  React.useEffect(() => {
+    if (currentUserId && post.content && !isDeleted) {
+      const isNew = (new Date().getTime() - new Date(post.created_at).getTime()) < 30000; // 30 seconds
+      if (isNew) {
+        ingestToLocal(post.content, "social_post", currentUserId, post.id, post.updated_at);
+      }
+    }
+  }, [post.id, post.content, post.created_at, post.updated_at, currentUserId, isDeleted]);
 
   async function toggleLike() {
     if (busy) return;
@@ -164,6 +175,9 @@ export function PostCard({ post, currentUserId, highlight }: PostCardProps) {
         .eq("id", post.id);
 
       if (error) throw error;
+      
+      ingestToLocal(editedContent.trim(), "social_post", currentUserId, post.id, new Date().toISOString());
+
       setIsEditing(false);
       router.refresh();
     } catch (err) {
@@ -190,6 +204,7 @@ export function PostCard({ post, currentUserId, highlight }: PostCardProps) {
       }
 
       setIsDeleted(true);
+      deleteFromLocal(post.id, currentUserId);
     } catch (err: any) {
       console.error("Delete error:", err);
       alert(`Failed to delete spark: ${err.message || "Something went wrong"}`);

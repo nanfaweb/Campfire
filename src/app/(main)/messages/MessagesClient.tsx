@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import type { ConversationPreview, DirectMessage, Profile } from "@/types/database";
 import { Avatar } from "@/components/Avatar";
 import { createClient } from "@/utils/supabase/client";
+import { ingestToLocal } from "@/lib/marshmallow-sync";
 
 interface MessagesClientProps {
   initialConversations: ConversationPreview[];
@@ -130,6 +131,9 @@ export default function MessagesClient({
           if (newMsg.sender_id === currentUserId || newMsg.recipient_id === currentUserId) {
             const otherId = newMsg.sender_id === currentUserId ? newMsg.recipient_id : newMsg.sender_id;
             
+            // Ingest incoming/outgoing message
+            ingestToLocal(newMsg.content, "social_message", currentUserId, newMsg.id, newMsg.created_at);
+            
             // Update messages if it belongs to the currently active thread (using ref)
             if (otherId === activeThreadUserIdRef.current) {
               setMessages((prev) => {
@@ -218,6 +222,7 @@ export default function MessagesClient({
 
       if (res.ok) {
         setNewMessage("");
+        ingestToLocal(newMessage || attachmentUrl || "", "social_message", currentUserId, "new_msg_" + Date.now());
       }
     } catch (e) {
       console.error(e);

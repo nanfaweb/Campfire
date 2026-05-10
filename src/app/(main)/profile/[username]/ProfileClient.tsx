@@ -7,6 +7,7 @@ import { createClient } from "@/utils/supabase/client";
 import { Avatar } from "@/components/Avatar";
 import { PostCard } from "@/components/PostCard";
 import { Icon } from "@/components/Icon";
+import { ingestToLocal } from "@/lib/marshmallow-sync";
 import Link from "next/link";
 
 interface ProfileClientProps {
@@ -62,6 +63,9 @@ export default function ProfileClient({
 
       if (error) throw error;
       
+      const profileText = `Profile Update: @${profile.username} (${displayName}). Bio: ${bio}`;
+      ingestToLocal(profileText, "profile", currentUserId, profile.id, new Date().toISOString());
+
       setIsEditing(false);
       router.refresh();
     } catch (error) {
@@ -201,7 +205,7 @@ export default function ProfileClient({
       day: "numeric",
       year: "numeric",
     });
-
+    
   return (
     <main className="ml-64 flex-1 pt-8 px-10 max-w-5xl">
       <style>{`

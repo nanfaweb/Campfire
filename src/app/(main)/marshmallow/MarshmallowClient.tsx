@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { Icon } from "@/components/Icon";
 import type { ChatbotMessage, Post, Profile, DirectMessage, Friendship } from "@/types/database";
 import { createClient } from "@/utils/supabase/client";
+import { ingestToLocal } from "@/lib/marshmallow-sync";
 
 interface MarshmallowClientProps {
   sessionId: string;
@@ -89,49 +90,34 @@ export default function MarshmallowClient({
       // 6. Ingestion Sequence
       setSyncStatus("Ingesting to Local Brain...");
       
-      const ingestItem = async (text: string) => {
-        const res = await fetch("http://localhost:8000/ingest", {
-          method: "POST",
-          headers: { 
-            "Content-Type": "application/json",
-            "x-user-id": currentUserId
-          },
-          body: JSON.stringify({
-            text,
-            metadata: { 
-              source: "marshmellow",
-              type: "social_feed",
-              user_id: currentUserId
-            }
-          })
-        });
-        if (!res.ok) throw new Error("Local Brain offline");
-      };
-
       let count = 0;
 
       // Ingest Profiles
       for (const p of (profiles || [])) {
-        await ingestItem(`Profile: ${p.username} (${p.display_name}). Bio: ${p.bio}`);
-        count++;
+        const text = `Profile: ${p.username} (${p.display_name}). Bio: ${p.bio}`;
+        const success = await ingestToLocal(text, "profile", currentUserId, p.id);
+        if (success) count++;
       }
 
       // Ingest Public Posts
       for (const post of (publicPosts || [])) {
-        await ingestItem(`Public Post by ${post.author_id}: ${post.content}`);
-        count++;
+        const text = `Public Post by ${post.author_id}: ${post.content}`;
+        const success = await ingestToLocal(text, "social_post", currentUserId, post.id);
+        if (success) count++;
       }
 
       // Ingest Messages
       for (const msg of (personalMessages || [])) {
-        await ingestItem(`Message between ${msg.sender_id} and ${msg.recipient_id}: ${msg.content}`);
-        count++;
+        const text = `Message between ${msg.sender_id} and ${msg.recipient_id}: ${msg.content}`;
+        const success = await ingestToLocal(text, "social_message", currentUserId, msg.id);
+        if (success) count++;
       }
 
       // Ingest Friends' Posts
       for (const post of friendsPosts) {
-        await ingestItem(`Friend's Post by ${post.author_id}: ${post.content}`);
-        count++;
+        const text = `Friend's Post by ${post.author_id}: ${post.content}`;
+        const success = await ingestToLocal(text, "social_post", currentUserId, post.id);
+        if (success) count++;
       }
 
       setSyncStatus(`Brain Synced! ${count} items ✨`);

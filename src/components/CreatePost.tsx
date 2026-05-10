@@ -6,6 +6,7 @@ import { createClient } from "@/utils/supabase/client";
 import { Icon } from "@/components/Icon";
 import { Avatar } from "@/components/Avatar";
 import { Profile } from "@/types/database";
+import { ingestToLocal } from "@/lib/marshmallow-sync";
 
 interface CreatePostProps {
   currentUser: Profile;
@@ -119,6 +120,9 @@ export function CreatePost({ currentUser, onPostCreated, autoFocus }: CreatePost
       });
 
       if (insertError) throw insertError;
+
+      // 2.1 Ingest to Local Brain
+      ingestToLocal(content.trim(), "social_post", currentUser.id, "new_post_" + Date.now());
 
       // 3. Success feedback & Reset
       setContent("");

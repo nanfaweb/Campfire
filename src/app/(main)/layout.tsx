@@ -1,6 +1,7 @@
 import React from "react";
 import { Sidebar } from "@/components/Sidebar";
 import MarshmallowChat from "@/components/MarshmallowChat";
+import MarshmallowSyncEngine from "@/components/MarshmallowSyncEngine";
 import { getCurrentProfile } from "@/lib/queries/profiles";
 
 export default async function MainLayout({ children }: { children: React.ReactNode }) {
@@ -8,6 +9,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
   
   return (
     <div className="flex min-h-screen bg-[#FFF8F2] font-body text-[#32231B]">
+      <MarshmallowSyncEngine />
       <Sidebar currentUsername={profile?.username} />
       <div className="flex-1 flex flex-col min-w-0">
         {children}

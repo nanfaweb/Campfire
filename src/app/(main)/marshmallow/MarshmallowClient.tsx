@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Icon } from "@/components/Icon";
-import type { ChatbotMessage } from "@/types/database";
+import type { ChatbotMessage, Post, Profile, DirectMessage, Friendship } from "@/types/database";
+import { createClient } from "@/utils/supabase/client";
 
 interface MarshmallowClientProps {
   sessionId: string;
@@ -32,28 +33,118 @@ export default function MarshmallowClient({
     if (isSyncing) return;
     
     setIsSyncing(true);
-    setSyncStatus("Warming up...");
+    setSyncStatus("Scraping data...");
 
+    const supabase = createClient();
+    
     try {
-      const res = await fetch("/api/marshmallow/sync", { method: "POST" });
-      const data = await res.json();
+      // 1. Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) throw new Error("Please log in to sync.");
+      const currentUserId = user.id;
 
-      if (res.ok) {
-        if (data.count) {
-          setSyncStatus(`Learned ${data.count} new things! ✨`);
-        } else {
-          setSyncStatus("Already up to date! 🔥");
-        }
-      } else {
-        throw new Error(data.error || "Sync failed");
+      // 2. Fetch Public Posts
+      setSyncStatus("Fetching public posts...");
+      const { data: publicPosts } = await supabase
+        .from("posts")
+        .select("*")
+        .eq("visibility", "public")
+        .eq("is_deleted", false);
+
+      // 3. Fetch All Profiles
+      setSyncStatus("Fetching profiles...");
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("*");
+
+      // 4. Fetch Personal Messages
+      setSyncStatus("Fetching messages...");
+      const { data: personalMessages } = await supabase
+        .from("messages")
+        .select("*")
+        .or(`sender_id.eq.${currentUserId},recipient_id.eq.${currentUserId}`);
+
+      // 5. Fetch Friends' Posts
+      setSyncStatus("Fetching friends' posts...");
+      const { data: friendships } = await supabase
+        .from("friendships")
+        .select("*")
+        .eq("status", "accepted")
+        .or(`requester_id.eq.${currentUserId},addressee_id.eq.${currentUserId}`);
+      
+      const friendIds = (friendships || []).map((f: Friendship) => 
+        f.requester_id === currentUserId ? f.addressee_id : f.requester_id
+      );
+
+      let friendsPosts: Post[] = [];
+      if (friendIds.length > 0) {
+        const { data: fp } = await supabase
+          .from("posts")
+          .select("*")
+          .in("author_id", friendIds)
+          .eq("is_deleted", false);
+        friendsPosts = fp || [];
       }
-    } catch (e) {
+
+      // 6. Ingestion Sequence
+      setSyncStatus("Ingesting to Local Brain...");
+      
+      const ingestItem = async (text: string) => {
+        const res = await fetch("http://localhost:8000/ingest", {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "x-user-id": currentUserId
+          },
+          body: JSON.stringify({
+            text,
+            metadata: { 
+              source: "marshmellow",
+              type: "social_feed",
+              user_id: currentUserId
+            }
+          })
+        });
+        if (!res.ok) throw new Error("Local Brain offline");
+      };
+
+      let count = 0;
+
+      // Ingest Profiles
+      for (const p of (profiles || [])) {
+        await ingestItem(`Profile: ${p.username} (${p.display_name}). Bio: ${p.bio}`);
+        count++;
+      }
+
+      // Ingest Public Posts
+      for (const post of (publicPosts || [])) {
+        await ingestItem(`Public Post by ${post.author_id}: ${post.content}`);
+        count++;
+      }
+
+      // Ingest Messages
+      for (const msg of (personalMessages || [])) {
+        await ingestItem(`Message between ${msg.sender_id} and ${msg.recipient_id}: ${msg.content}`);
+        count++;
+      }
+
+      // Ingest Friends' Posts
+      for (const post of friendsPosts) {
+        await ingestItem(`Friend's Post by ${post.author_id}: ${post.content}`);
+        count++;
+      }
+
+      setSyncStatus(`Brain Synced! ${count} items ✨`);
+    } catch (e: any) {
       console.error("Sync error:", e);
-      setSyncStatus("Sync failed ❄️");
+      if (e.message === "Failed to fetch" || e.message.includes("Local Brain offline")) {
+        setSyncStatus("Local Brain Offline ❄️");
+      } else {
+        setSyncStatus("Sync failed ❄️");
+      }
     } finally {
       setIsSyncing(false);
-      // Clear status after 4 seconds to keep UI clean
-      setTimeout(() => setSyncStatus(""), 4000);
+      setTimeout(() => setSyncStatus(""), 5000);
     }
   };
 
@@ -77,35 +168,44 @@ export default function MarshmallowClient({
     setIsTyping(true);
 
     try {
-      const res = await fetch("/api/marshmallow", {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      const currentUserId = user?.id || "anonymous";
+
+      const res = await fetch("http://localhost:8000/ask", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: userText, session_id: sessionId }),
+        headers: { 
+          "Content-Type": "application/json",
+          "x-user-id": currentUserId
+        },
+        body: JSON.stringify({ prompt: userText }),
       });
 
       if (res.ok) {
-        const { reply } = await res.json();
+        const { answer } = await res.json();
         const aiMsg: ChatbotMessage = {
           id: `temp-ai-${Date.now()}`,
           session_id: sessionId,
           role: "assistant",
-          content: reply,
+          content: answer,
           source_post_ids: [],
           created_at: new Date().toISOString(),
         };
         setMessages((prev) => [...prev, aiMsg]);
       } else {
-        const errorData = await res.json().catch(() => ({}));
-        console.error("Marshmallow API Error:", errorData);
-        throw new Error(errorData.error || "Failed to get response");
+        throw new Error("Local Brain offline");
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      let errorText = "Oops, my spark fizzled. Could you try asking that again?";
+      if (e.message === "Failed to fetch" || e.message.includes("Local Brain offline")) {
+        errorText = "Local Brain is offline. Please start the RAG server at port 8000.";
+      }
       const errorMsg: ChatbotMessage = {
           id: `temp-err-${Date.now()}`,
           session_id: sessionId,
           role: "assistant",
-          content: "Oops, my spark fizzled. Could you try asking that again?",
+          content: errorText,
           source_post_ids: [],
           created_at: new Date().toISOString(),
         };

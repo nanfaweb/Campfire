@@ -5,7 +5,10 @@
 import { redirect } from "next/navigation";
 import { getCurrentProfile, getFriendSuggestions, getFriends } from "@/lib/queries/profiles";
 import { getFeedPosts } from "@/lib/queries/posts";
+import { getActiveStories } from "@/lib/queries/stories";
 import HomeClient from "@/app/(main)/home/HomeClient";
+
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   // 1. Auth gate — redirect if not logged in
@@ -15,10 +18,11 @@ export default async function HomePage() {
   }
 
   // 2. Parallel data fetch for performance
-  const [posts, suggestions, friends] = await Promise.all([
+  const [posts, suggestions, friends, stories] = await Promise.all([
     getFeedPosts(profile.id),
     getFriendSuggestions(profile.id, 5),
     getFriends(profile.id),
+    getActiveStories(profile.id),
   ]);
 
   // 3. Render interactive client component with server-fetched data
@@ -28,6 +32,7 @@ export default async function HomePage() {
       initialPosts={posts}
       suggestions={suggestions}
       friends={friends}
+      initialStories={stories}
     />
   );
 }

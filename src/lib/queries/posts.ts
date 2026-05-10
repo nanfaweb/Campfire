@@ -12,7 +12,7 @@ export async function getFeedPosts(userId: string): Promise<FeedPost[]> {
   const supabase = await createClient();
 
   try {
-    // Fetch accepted friends first; home feed should only show friend posts.
+    // Fetch accepted friends; home feed shows friend posts and own posts.
     const { data: friendships, error: friendshipsError } = await supabase
       .from("friendships")
       .select("requester_id, addressee_id")
@@ -32,9 +32,7 @@ export async function getFeedPosts(userId: string): Promise<FeedPost[]> {
       )
     );
 
-    if (friendIds.length === 0) {
-      return [];
-    }
+    const authorIds = [userId, ...friendIds];
 
     const { data, error } = await supabase
       .from("posts")
@@ -44,11 +42,12 @@ export async function getFeedPosts(userId: string): Promise<FeedPost[]> {
         author:profiles!author_id(*),
         likes_agg:likes(count),
         comments_agg:comments(count),
-        user_likes:likes!inner(user_id)
+        user_likes:likes(user_id),
+        user_saved:saved_posts(user_id)
       `
       )
       .eq("is_deleted", false)
-      .in("author_id", friendIds)
+      .in("author_id", authorIds)
       .order("created_at", { ascending: false })
       .limit(30);
 
@@ -66,7 +65,7 @@ export async function getFeedPosts(userId: string): Promise<FeedPost[]> {
         `
         )
         .eq("is_deleted", false)
-        .in("author_id", friendIds)
+        .in("author_id", authorIds)
         .order("created_at", { ascending: false })
         .limit(30);
 
@@ -124,12 +123,82 @@ export async function getExplorePosts(userId: string): Promise<FeedPost[]> {
   }
 }
 
+/**
+ * Fetch all posts by a specific user (for their profile page).
+ */
+export async function getUserPosts(targetUserId: string, currentUserId: string): Promise<FeedPost[]> {
+  const supabase = await createClient();
+
+  try {
+    const { data, error } = await supabase
+      .from("posts")
+      .select(
+        `
+        *,
+        author:profiles!author_id(*),
+        likes_agg:likes(count),
+        comments_agg:comments(count),
+        user_likes:likes(user_id),
+        user_saved:saved_posts(user_id)
+      `
+      )
+      .eq("is_deleted", false)
+      .eq("author_id", targetUserId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("[getUserPosts] error:", error.message);
+      return [];
+    }
+
+    return transformPosts(data || [], currentUserId, true);
+  } catch (err) {
+    console.error("[getUserPosts] unexpected error:", err);
+    return [];
+  }
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Fetch all posts saved by the user.
+ */
+export async function getSavedPosts(userId: string): Promise<FeedPost[]> {
+  const supabase = await createClient();
+
+  try {
+    const { data, error } = await supabase
+      .from("saved_posts")
+      .select(`
+        post:posts(
+          *,
+          author:profiles!author_id(*),
+          likes_agg:likes(count),
+          comments_agg:comments(count),
+          user_likes:likes(user_id),
+          user_saved:saved_posts(user_id)
+        )
+      `)
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("[getSavedPosts] error:", error.message);
+      return [];
+    }
+
+    const posts = (data || []).map((row: any) => row.post);
+    return transformPosts(posts, userId, true);
+  } catch (err) {
+    console.error("[getSavedPosts] unexpected error:", err);
+    return [];
+  }
+}
 
 function transformPosts(
   raw: any[],
   userId: string,
-  hasUserLikes: boolean
+  checkUserInteractions: boolean
 ): FeedPost[] {
   return raw.map((row) => ({
     id: row.id,
@@ -145,9 +214,14 @@ function transformPosts(
     author: row.author,
     likes_count: row.likes_agg?.[0]?.count ?? 0,
     comments_count: row.comments_agg?.[0]?.count ?? 0,
-    user_has_liked: hasUserLikes
+    user_has_liked: checkUserInteractions
       ? (row.user_likes ?? []).some(
           (l: { user_id: string }) => l.user_id === userId
+        )
+      : false,
+    user_has_saved: checkUserInteractions
+      ? (row.user_saved ?? []).some(
+          (s: { user_id: string }) => s.user_id === userId
         )
       : false,
   }));

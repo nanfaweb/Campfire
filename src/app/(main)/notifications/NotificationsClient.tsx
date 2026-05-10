@@ -7,13 +7,64 @@ import { Avatar } from "@/components/Avatar";
 
 interface NotificationsClientProps {
   initialNotifications: Notification[];
+  initialRequests: any[];
+  currentUserId: string;
 }
 
 export default function NotificationsClient({
   initialNotifications,
+  initialRequests,
+  currentUserId,
 }: NotificationsClientProps) {
   const [notifications, setNotifications] = useState(initialNotifications);
+  const [requests, setRequests] = useState(initialRequests);
+  const [busyRequests, setBusyRequests] = useState<Record<string, boolean>>({});
   const supabase = createClient();
+
+  // Real-time listener for new notifications and requests
+  React.useEffect(() => {
+    const channel = supabase
+      .channel(`notifications-${currentUserId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${currentUserId}`,
+        },
+        (payload) => {
+          setNotifications((prev) => [payload.new as Notification, ...prev]);
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "friendships",
+          filter: `addressee_id=eq.${currentUserId}`,
+        },
+        async (payload) => {
+          // Fetch the requester's profile to show in the UI
+          const { data } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", payload.new.requester_id)
+            .single();
+          
+          if (data) {
+            const newRequest = { ...payload.new, requester: data };
+            setRequests((prev) => [newRequest, ...prev]);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUserId, supabase]);
 
   const handleMarkAsRead = async (id: string, isRead: boolean) => {
     if (isRead) return;
@@ -27,6 +78,42 @@ export default function NotificationsClient({
       await supabase.from("notifications").update({ is_read: true }).eq("id", id);
     } catch (e) {
       console.error("Failed to mark notification as read", e);
+    }
+  };
+
+  const handleAcceptRequest = async (requestId: string) => {
+    setBusyRequests(prev => ({ ...prev, [requestId]: true }));
+    try {
+      const { error } = await supabase
+        .from("friendships")
+        .update({ status: "accepted" })
+        .eq("id", requestId);
+      
+      if (error) throw error;
+      setRequests(prev => prev.filter(r => r.id !== requestId));
+    } catch (e) {
+      console.error("Failed to accept request", e);
+      alert("Failed to accept request.");
+    } finally {
+      setBusyRequests(prev => ({ ...prev, [requestId]: false }));
+    }
+  };
+
+  const handleDeclineRequest = async (requestId: string) => {
+    setBusyRequests(prev => ({ ...prev, [requestId]: true }));
+    try {
+      const { error } = await supabase
+        .from("friendships")
+        .delete()
+        .eq("id", requestId);
+      
+      if (error) throw error;
+      setRequests(prev => prev.filter(r => r.id !== requestId));
+    } catch (e) {
+      console.error("Failed to decline request", e);
+      alert("Failed to decline request.");
+    } finally {
+      setBusyRequests(prev => ({ ...prev, [requestId]: false }));
     }
   };
 
@@ -55,7 +142,53 @@ export default function NotificationsClient({
             </h2>
           </header>
 
-          <div className="space-y-4">
+          <div className="space-y-8">
+            {/* Pending Requests Section */}
+            {requests.length > 0 && (
+              <section className="mb-12">
+                <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-orange-500 mb-6 px-1">
+                  Pending Requests ({requests.length})
+                </h3>
+                <div className="space-y-4">
+                  {requests.map((req) => (
+                    <div 
+                      key={req.id}
+                      className="bg-white border border-orange-100 rounded-[2rem] p-6 shadow-[0_10px_40px_-15px_rgba(255,107,43,0.1)] flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-4">
+                        <Avatar src={req.requester.avatar_url} alt={req.requester.username} size={56} />
+                        <div>
+                          <p className="font-bold text-[#231a11]">{req.requester.display_name || req.requester.username}</p>
+                          <p className="text-xs text-zinc-400">wants to join your campfire</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => handleAcceptRequest(req.id)}
+                          disabled={busyRequests[req.id]}
+                          className="bg-orange-500 text-white px-5 py-2.5 rounded-full font-bold text-xs hover:bg-orange-600 transition-all active:scale-95 disabled:opacity-50"
+                        >
+                          Accept
+                        </button>
+                        <button 
+                          onClick={() => handleDeclineRequest(req.id)}
+                          disabled={busyRequests[req.id]}
+                          className="bg-zinc-50 text-zinc-500 px-5 py-2.5 rounded-full font-bold text-xs hover:bg-zinc-100 transition-all active:scale-95 disabled:opacity-50"
+                        >
+                          Decline
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            <section>
+              <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-zinc-400 mb-6 px-1">
+                Recent Activity
+              </h3>
+              <div className="space-y-4">
             {notifications.length === 0 ? (
               <p className="text-zinc-400 text-center py-8">
                 No new notifications. You're all caught up!
@@ -123,6 +256,8 @@ export default function NotificationsClient({
               })
             )}
           </div>
+        </section>
+      </div>
         </div>
       </main>
     </div>

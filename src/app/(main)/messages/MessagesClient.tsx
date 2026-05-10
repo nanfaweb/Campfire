@@ -2,9 +2,12 @@
 
 // ── MessagesClient — Interactive Messages Component ────────────────────────
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { ConversationPreview, DirectMessage, Profile } from "@/types/database";
 import { Avatar } from "@/components/Avatar";
+import { createClient } from "@/utils/supabase/client";
+import { ingestToLocal } from "@/lib/marshmallow-sync";
 
 interface MessagesClientProps {
   initialConversations: ConversationPreview[];
@@ -15,25 +18,72 @@ export default function MessagesClient({
   initialConversations,
   currentUserId,
 }: MessagesClientProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const userIdParam = searchParams.get("userId");
+
   const [conversations, setConversations] = useState(initialConversations);
   const [activeThreadUserId, setActiveThreadUserId] = useState<string | null>(
-    initialConversations.length > 0 ? initialConversations[0].participant.id : null
+    userIdParam || (initialConversations.length > 0 ? initialConversations[0].participant.id : null)
   );
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [tempParticipant, setTempParticipant] = useState<Profile | null>(null);
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const conversationsRef = useRef(conversations);
+  const activeThreadUserIdRef = useRef(activeThreadUserId);
+  const supabase = useMemo(() => createClient(), []);
+
+  // Keep refs in sync
+  useEffect(() => {
+    conversationsRef.current = conversations;
+  }, [conversations]);
+
+  useEffect(() => {
+    activeThreadUserIdRef.current = activeThreadUserId;
+  }, [activeThreadUserId]);
+
+  // Sync state with props
+  useEffect(() => {
+    setConversations(initialConversations);
+  }, [initialConversations]);
+
+  // Handle userId param and temp participants
+  useEffect(() => {
+    if (userIdParam) {
+      setActiveThreadUserId(userIdParam);
+      const exists = conversations.some(c => c.participant.id === userIdParam);
+      if (!exists && !tempParticipant) {
+        // Fetch profile for the new chat
+        const fetchProfile = async () => {
+          const { data } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", userIdParam)
+            .single();
+          if (data) setTempParticipant(data as Profile);
+        };
+        fetchProfile();
+      }
+    }
+  }, [userIdParam, conversations, tempParticipant, supabase]);
+
+  // Auto-scroll when messages change
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
 
   // Fetch messages when active thread changes
   useEffect(() => {
     if (!activeThreadUserId) return;
 
     const fetchMessages = async () => {
-      // For simplicity, we fetch via an API route or we could use the Supabase client directly
-      // I'll use the Supabase client directly here for simplicity since it's a client component
-      // and RLS handles security.
-      const { createClient } = await import("@/utils/supabase/client");
-      const supabase = createClient();
-
       const { data } = await supabase
         .from("messages")
         .select("*")
@@ -62,14 +112,101 @@ export default function MessagesClient({
     };
 
     fetchMessages();
-  }, [activeThreadUserId, currentUserId]);
+  }, [activeThreadUserId, currentUserId, supabase]);
+
+  // Real-time subscription
+  useEffect(() => {
+    const channel = supabase
+      .channel(`messages-user-${currentUserId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+        },
+        async (payload) => {
+          const newMsg = payload.new as DirectMessage;
+          
+          if (newMsg.sender_id === currentUserId || newMsg.recipient_id === currentUserId) {
+            const otherId = newMsg.sender_id === currentUserId ? newMsg.recipient_id : newMsg.sender_id;
+            
+            // Ingest incoming/outgoing message
+            ingestToLocal(newMsg.content, "social_message", currentUserId, newMsg.id, newMsg.created_at);
+            
+            // Update messages if it belongs to the currently active thread (using ref)
+            if (otherId === activeThreadUserIdRef.current) {
+              setMessages((prev) => {
+                // Prevent duplicates
+                if (prev.some(m => m.id === newMsg.id)) return prev;
+                return [...prev, newMsg];
+              });
+              
+              if (newMsg.recipient_id === currentUserId) {
+                await fetch("/api/messages", {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ sender_id: otherId }),
+                });
+              }
+            }
+
+            // Update conversation list sidebar
+            const exists = conversationsRef.current.some((c) => c.participant.id === otherId);
+            if (!exists) {
+              router.refresh();
+            } else {
+              setConversations((prev) => {
+                const updated = [...prev];
+                const idx = updated.findIndex((c) => c.participant.id === otherId);
+                if (idx !== -1) {
+                  const thread = { ...updated[idx] };
+                  thread.last_message = newMsg;
+                  if (newMsg.recipient_id === currentUserId && otherId !== activeThreadUserIdRef.current) {
+                    thread.unread_count += 1;
+                  }
+                  updated.splice(idx, 1);
+                  updated.unshift(thread);
+                }
+                return updated;
+              });
+            }
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "messages",
+        },
+        (payload) => {
+          const updatedMsg = payload.new as DirectMessage;
+          if (updatedMsg.recipient_id === currentUserId && updatedMsg.is_read) {
+             setMessages(prev => prev.map(m => m.id === updatedMsg.id ? updatedMsg : m));
+          }
+        }
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('Realtime subscribed for user:', currentUserId);
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUserId, supabase, router]); // Removed activeThreadUserId dependency
 
   const activeConversation = conversations.find(
     (c) => c.participant.id === activeThreadUserId
   );
 
-  async function sendMessage() {
-    if (!newMessage.trim() || !activeThreadUserId || isSending) return;
+  const participant = activeConversation?.participant || tempParticipant;
+
+  async function sendMessage(attachmentUrl?: string) {
+    if ((!newMessage.trim() && !attachmentUrl) || !activeThreadUserId || isSending) return;
     setIsSending(true);
 
     try {
@@ -78,32 +215,49 @@ export default function MessagesClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           recipient_id: activeThreadUserId,
-          content: newMessage,
+          content: newMessage || (attachmentUrl ? "" : ""), // Allow empty content if attachment exists
+          attachment_url: attachmentUrl,
         }),
       });
 
       if (res.ok) {
-        const { message } = await res.json();
-        setMessages((prev) => [...prev, message as DirectMessage]);
         setNewMessage("");
-        
-        // Update conversation preview
-        setConversations(prev => {
-           const updated = [...prev];
-           const idx = updated.findIndex(c => c.participant.id === activeThreadUserId);
-           if (idx !== -1) {
-             updated[idx].last_message = message;
-             // Move to top
-             const item = updated.splice(idx, 1)[0];
-             updated.unshift(item);
-           }
-           return updated;
-        });
+        ingestToLocal(newMessage || attachmentUrl || "", "social_message", currentUserId, "new_msg_" + Date.now());
       }
     } catch (e) {
       console.error(e);
     } finally {
       setIsSending(false);
+    }
+  }
+
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !activeThreadUserId) return;
+
+    setIsUploading(true);
+    try {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+      const filePath = `${currentUserId}/${fileName}`;
+
+      const { data, error } = await supabase.storage
+        .from("message-attachments")
+        .upload(filePath, file);
+
+      if (error) throw error;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("message-attachments")
+        .getPublicUrl(filePath);
+
+      await sendMessage(publicUrl);
+    } catch (err) {
+      console.error("Upload error:", err);
+      alert("Failed to upload file.");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }
 
@@ -151,9 +305,9 @@ export default function MessagesClient({
                   <div
                     key={c.participant.id}
                     onClick={() => setActiveThreadUserId(c.participant.id)}
-                    className={`flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all duration-300 ${
+                    className={`flex items-center gap-4 p-5 rounded-[1.5rem] cursor-pointer transition-all duration-300 ${
                       isActive
-                        ? "bg-orange-50/50 border border-orange-100/50"
+                        ? "bg-orange-50/50 border border-orange-100 shadow-sm"
                         : "hover:bg-zinc-50 border border-transparent"
                     }`}
                   >
@@ -196,27 +350,31 @@ export default function MessagesClient({
         </aside>
 
         {/* ── Chat Window ── */}
-        {activeConversation ? (
+        {activeThreadUserId && participant ? (
           <section className="flex-grow flex flex-col bg-[#FAFAFA]">
             {/* Chat header */}
-            <header className="px-6 py-4 bg-white border-b border-orange-50 flex items-center justify-between shadow-sm">
-              <div className="flex items-center gap-3">
+            <header className="px-8 py-5 bg-white border-b border-orange-50 flex items-center justify-between shadow-sm sticky top-0 z-10">
+              <div className="flex items-center gap-4">
                 <Avatar
-                  src={activeConversation.participant.avatar_url}
-                  alt={activeConversation.participant.username}
-                  size={40}
+                  src={participant.avatar_url}
+                  alt={participant.username}
+                  size={44}
                 />
                 <div>
-                  <h3 className="font-bold text-zinc-900 font-[Space_Grotesk]">
-                    {activeConversation.participant.display_name ||
-                      activeConversation.participant.username}
+                  <h3 className="font-black text-zinc-900 font-[Space_Grotesk] text-lg">
+                    {participant.display_name ||
+                      participant.username}
                   </h3>
+                  <p className="text-[10px] uppercase tracking-widest text-orange-500 font-bold">Online</p>
                 </div>
               </div>
             </header>
 
             {/* Messages */}
-            <div className="flex-grow overflow-y-auto custom-scrollbar p-8 space-y-4">
+            <div 
+              ref={scrollRef}
+              className="flex-grow overflow-y-auto custom-scrollbar p-8 space-y-4"
+            >
               {messages.map((msg) => {
                 const isMine = msg.sender_id === currentUserId;
                 return (
@@ -227,13 +385,33 @@ export default function MessagesClient({
                     }`}
                   >
                     <div
-                      className={`max-w-xl p-4 shadow-sm ${
+                      className={`max-w-[70%] p-5 shadow-sm leading-relaxed ${
                         isMine
-                          ? "bg-[#843615] text-white rounded-2xl rounded-br-none"
-                          : "bg-white border border-orange-100 text-zinc-800 rounded-2xl rounded-bl-none"
+                          ? "bg-[#843615] text-white rounded-[1.5rem] rounded-br-none"
+                          : "bg-white border border-orange-100 text-zinc-800 rounded-[1.5rem] rounded-bl-none"
                       }`}
                     >
-                      <p className="text-sm">{msg.content}</p>
+                      {msg.attachment_url && (
+                        <div className="mb-3 rounded-lg overflow-hidden">
+                          {msg.attachment_url.match(/\.(mp4|webm|ogg|mov)$/i) ? (
+                            <video 
+                              src={msg.attachment_url} 
+                              controls 
+                              className="max-w-full rounded-lg shadow-inner"
+                            />
+                          ) : (
+                            <img 
+                              src={msg.attachment_url} 
+                              alt="Attachment" 
+                              className="max-w-full rounded-lg shadow-inner"
+                              loading="lazy"
+                            />
+                          )}
+                        </div>
+                      )}
+                      {msg.content && (
+                        <p className="text-sm md:text-base font-medium whitespace-pre-wrap">{msg.content}</p>
+                      )}
                     </div>
                     <span className="text-[10px] text-zinc-400 font-bold uppercase mx-1">
                       {formatTime(msg.created_at)}
@@ -246,6 +424,24 @@ export default function MessagesClient({
             {/* Input area */}
             <footer className="p-6 bg-white border-t border-orange-50">
               <div className="max-w-4xl mx-auto flex items-end gap-3">
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleFileSelect} 
+                  className="hidden" 
+                  accept="image/*,video/*"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading || isSending}
+                  className="w-12 h-12 flex items-center justify-center text-zinc-400 hover:text-orange-500 hover:bg-orange-50 rounded-2xl transition-all active:scale-90 disabled:opacity-50"
+                >
+                  {isUploading ? (
+                    <div className="w-5 h-5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <span className="material-symbols-outlined text-2xl">add_circle</span>
+                  )}
+                </button>
                 <div className="flex-grow relative">
                   <textarea
                     value={newMessage}
@@ -256,14 +452,14 @@ export default function MessagesClient({
                         sendMessage();
                       }
                     }}
-                    className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-3 text-sm focus:ring-1 focus:ring-orange-300 resize-none max-h-32 outline-none"
-                    placeholder="Write a message..."
+                    className="w-full bg-orange-50/30 border border-orange-100 rounded-3xl px-6 py-4 text-base focus:outline-none focus:ring-2 focus:ring-orange-200 resize-none max-h-48 transition-all"
+                    placeholder="Write a cozy message..."
                     rows={1}
                   />
                 </div>
                 <button
-                  onClick={sendMessage}
-                  disabled={isSending || !newMessage.trim()}
+                  onClick={() => sendMessage()}
+                  disabled={isSending || isUploading || (!newMessage.trim())}
                   className="w-12 h-12 bg-[#843615] text-white rounded-2xl flex items-center justify-center shadow-lg hover:bg-[#6b2c11] active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span className="material-symbols-outlined">send</span>

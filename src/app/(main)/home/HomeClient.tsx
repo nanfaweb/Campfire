@@ -3,10 +3,15 @@
 // ── HomeClient — Interactive Feed Component ──────────────────────────────────
 // Receives server-fetched data as props; handles likes, saves, Marshmallow chat.
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { createClient } from "@/utils/supabase/client";
 import { Icon } from "@/components/Icon";
 import { Avatar } from "@/components/Avatar";
-import type { FeedPost, Profile, FriendSuggestion } from "@/types/database";
+import { PostCard } from "@/components/PostCard";
+import { CreatePost } from "@/components/CreatePost";
+import type { FeedPost, Profile, FriendSuggestion, Story } from "@/types/database";
+import Link from "next/link";
 
 // ── Inline critical styles ───────────────────────────────────────────────────
 const INLINE_STYLES = `
@@ -20,163 +25,16 @@ const INLINE_STYLES = `
     -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
   .no-scrollbar::-webkit-scrollbar { display:none; }
   .no-scrollbar { -ms-overflow-style:none; scrollbar-width:none; }
+  @keyframes story-progress {
+    from { width: 0%; }
+    to { width: 100%; }
+  }
+  .animate-story-progress { animation: story-progress 5s linear forwards; }
 `;
 
-// ── PostCard ─────────────────────────────────────────────────────────────────
-
-function PostCard({
-  post,
-  currentUserId,
-}: {
-  post: FeedPost;
-  currentUserId: string;
-}) {
-  const [liked, setLiked] = useState(post.user_has_liked);
-  const [saved, setSaved] = useState(false);
-  const [likeCount, setLikeCount] = useState(post.likes_count);
-  const [busy, setBusy] = useState(false);
-
-  async function toggleLike() {
-    if (busy) return;
-    setBusy(true);
-
-    // Optimistic update
-    const wasLiked = liked;
-    setLiked(!wasLiked);
-    setLikeCount((c) => (wasLiked ? c - 1 : c + 1));
-
-    try {
-      const res = await fetch("/api/likes", {
-        method: wasLiked ? "DELETE" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ post_id: post.id }),
-      });
-
-      if (!res.ok) {
-        // Revert on failure
-        setLiked(wasLiked);
-        setLikeCount((c) => (wasLiked ? c + 1 : c - 1));
-      }
-    } catch {
-      setLiked(wasLiked);
-      setLikeCount((c) => (wasLiked ? c + 1 : c - 1));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const dateStr = new Date(post.created_at).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
-
-  return (
-    <article className="custom-card-border rounded-xl overflow-hidden">
-      {/* Header */}
-      <div className="p-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Avatar
-            src={post.author.avatar_url}
-            alt={post.author.username}
-            size={40}
-          />
-          <div>
-            <div className="flex items-center gap-1">
-              <span className="font-bold text-sm text-zinc-900 font-[Space_Grotesk]">
-                {post.author.username}
-              </span>
-              {post.author.is_verified && (
-                <span className="text-orange-500 text-xs">✨</span>
-              )}
-            </div>
-            <span className="text-[10px] font-[Space_Grotesk] tracking-wide uppercase text-zinc-400">
-              {dateStr}
-            </span>
-          </div>
-        </div>
-        <button className="text-zinc-300 hover:text-orange-500 transition-colors">
-          <Icon name="more_horiz" size={20} />
-        </button>
-      </div>
-
-      {/* Media */}
-      {post.media_urls.length > 0 && (
-        <div className="aspect-video w-full bg-orange-50 overflow-hidden">
-          <img
-            src={post.media_urls[0]}
-            alt="Post media"
-            className="w-full h-full object-cover"
-          />
-        </div>
-      )}
-
-      {/* Body */}
-      <div className="p-5">
-        <p className="text-sm text-zinc-600 leading-relaxed">{post.content}</p>
-
-        {/* Actions */}
-        <div className="mt-5 flex items-center gap-5">
-          <button
-            onClick={toggleLike}
-            disabled={busy}
-            className="flex items-center gap-1.5 group"
-          >
-            <Icon
-              name="favorite"
-              fill={liked}
-              size={20}
-              className={`transition-colors ${
-                liked
-                  ? "text-red-500"
-                  : "text-zinc-300 group-hover:text-red-400"
-              }`}
-            />
-            <span className="text-xs text-zinc-400">{likeCount}</span>
-          </button>
-
-          <button className="flex items-center gap-1.5 group">
-            <Icon
-              name="chat_bubble"
-              size={20}
-              className="text-zinc-300 group-hover:text-orange-400 transition-colors"
-            />
-            <span className="text-xs text-zinc-400">
-              {post.comments_count}
-            </span>
-          </button>
-
-          <button className="flex items-center gap-1.5 group">
-            <Icon
-              name="send"
-              size={20}
-              className="text-zinc-300 group-hover:text-orange-400 transition-colors"
-            />
-          </button>
-
-          <button
-            onClick={() => setSaved((v) => !v)}
-            className="ml-auto"
-          >
-            <Icon
-              name="bookmark"
-              fill={saved}
-              size={20}
-              className={`transition-colors ${
-                saved
-                  ? "text-orange-500"
-                  : "text-zinc-300 hover:text-orange-400"
-              }`}
-            />
-          </button>
-        </div>
-      </div>
-    </article>
-  );
-}
-
-// ── Marshmallow Prompts ──────────────────────────────────────────────────────
-
 const MARSHMALLOW_PROMPTS = [
+  "What is the vibe today? ✨",
+  "Write a cozy story 📖",
   "Show me local tea shops 🍵",
   "Creative prompt of the day 🎨",
   "Write a morning haiku 📜",
@@ -188,7 +46,8 @@ interface HomeClientProps {
   currentUser: Profile;
   initialPosts: FeedPost[];
   suggestions: FriendSuggestion[];
-  friends?: Profile[];
+  friends: Profile[];
+  initialStories: Story[];
 }
 
 // ── Main Component ───────────────────────────────────────────────────────────
@@ -197,10 +56,30 @@ export default function HomeClient({
   currentUser,
   initialPosts,
   suggestions,
-  friends = [],
+  friends,
+  initialStories,
 }: HomeClientProps) {
+  const searchParams = useSearchParams();
+  const shouldCreate = searchParams.get("create") === "true";
+
   const [marshmallowMsg, setMarshmallowMsg] = useState("");
   const [marshmallowLoading, setMarshmallowLoading] = useState(false);
+  const [followState, setFollowState] = useState<Record<string, boolean>>(
+    Object.fromEntries(suggestions.map((u) => [u.id, u.initial_status === "pending"]))
+  );
+  const [homeSearch, setHomeSearch] = useState("");
+  const [searchResults, setSearchResults] = useState<Profile[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  
+  // Stories State
+  const [allStories, setAllStories] = useState(initialStories);
+  const [activeStoryUserId, setActiveStoryUserId] = useState<string | null>(null);
+  const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
+  const [isUploadingStory, setIsUploadingStory] = useState(false);
+  const storyInputRef = useRef<HTMLInputElement>(null);
+
+  const router = useRouter();
+  const supabase = createClient();
 
   async function askMarshmallow(prompt: string) {
     setMarshmallowLoading(true);
@@ -223,45 +102,266 @@ export default function HomeClient({
     }
   }
 
+  async function handleFollow(targetUserId: string) {
+    const targetUser = suggestions.find(u => u.id === targetUserId);
+    const status = targetUser?.is_public_profile ? "accepted" : "pending";
+
+    setFollowState((prev) => ({ ...prev, [targetUserId]: true }));
+    try {
+      const { error } = await supabase.from("friendships").insert({
+        requester_id: currentUser.id,
+        addressee_id: targetUserId,
+        status, 
+      });
+
+      if (error) {
+        if (error.code === "23505") return;
+        throw error;
+      }
+      
+      router.refresh();
+    } catch (error) {
+      setFollowState((prev) => ({ ...prev, [targetUserId]: false }));
+      console.error("Error following user:", error);
+    }
+  }
+
+  async function handleHomeSearch(val: string) {
+    setHomeSearch(val);
+    if (!val.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+    const { data } = await supabase
+      .from("profiles")
+      .select("*")
+      .or(`username.ilike.%${val}%,display_name.ilike.%${val}%`)
+      .limit(5);
+    
+    if (data) setSearchResults(data as Profile[]);
+    setIsSearching(false);
+  }
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && homeSearch.trim()) {
+      router.push(`/explore?q=${encodeURIComponent(homeSearch.trim())}`);
+    }
+  };
+
+  // ── Story Logic ────────────────────────────────────────────────────────────
+  
+  const storyAuthors = Array.from(new Set(allStories.map(s => s.author_id))).map(authorId => {
+    const authorStories = allStories.filter(s => s.author_id === authorId);
+    return {
+      author: authorStories[0].author!,
+      stories: authorStories
+    };
+  });
+  
+  const groupedStories = storyAuthors.reduce((acc, entry) => {
+    acc[entry.author.id] = entry;
+    return acc;
+  }, {} as Record<string, { author: Profile, stories: Story[] }>);
+
+  const activeUserStories = activeStoryUserId ? groupedStories[activeStoryUserId]?.stories : [];
+
+  const handleStoryUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingStory(true);
+    try {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${currentUser.id}/${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("stories")
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("stories")
+        .getPublicUrl(filePath);
+
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 24);
+
+      const { error: dbError } = await supabase.from("stories").insert({
+        author_id: currentUser.id,
+        media_url: publicUrl,
+        media_type: file.type.startsWith("video") ? "video" : "image",
+        expires_at: expiresAt.toISOString(),
+      });
+
+      if (dbError) throw dbError;
+      router.refresh();
+    } catch (err) {
+      console.error("Story upload failed:", err);
+      alert("Failed to post story. 🔥");
+    } finally {
+      setIsUploadingStory(false);
+      if (storyInputRef.current) storyInputRef.current.value = "";
+      router.refresh();
+    }
+  };
+
+  async function handleDeleteStory(storyId: string) {
+    if (!confirm("Remove this spark from your story? 🕯️")) return;
+    try {
+      const { error } = await supabase
+        .from("stories")
+        .delete()
+        .eq("id", storyId);
+
+      if (error) throw error;
+      
+      const updatedStories = allStories.filter(s => s.id !== storyId);
+      setAllStories(updatedStories);
+      
+      if (updatedStories.filter(s => s.author_id === activeStoryUserId).length === 0) {
+        setActiveStoryUserId(null);
+      } else if (currentStoryIndex >= updatedStories.filter(s => s.author_id === activeStoryUserId).length) {
+        setCurrentStoryIndex(prev => Math.max(0, prev - 1));
+      }
+    } catch (err) {
+      console.error("Error deleting story:", err);
+      alert("Failed to delete story.");
+    }
+  }
+
+  useEffect(() => {
+    if (!activeStoryUserId) return;
+
+    const timer = setTimeout(() => {
+      if (currentStoryIndex < activeUserStories.length - 1) {
+        setCurrentStoryIndex(prev => prev + 1);
+      } else {
+        // Auto-advance to next author
+        const currentAuthorIdx = storyAuthors.findIndex(a => a.author.id === activeStoryUserId);
+        if (currentAuthorIdx < storyAuthors.length - 1) {
+          const nextAuthor = storyAuthors[currentAuthorIdx + 1];
+          setActiveStoryUserId(nextAuthor.author.id);
+          setCurrentStoryIndex(0);
+        } else {
+          setActiveStoryUserId(null);
+          setCurrentStoryIndex(0);
+        }
+      }
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [activeStoryUserId, currentStoryIndex, activeUserStories.length, storyAuthors]);
+
   return (
     <>
       <style>{INLINE_STYLES}</style>
 
       {/* ── Feed ──────────────────────────────────────────────── */}
       <main className="ml-64 mr-80 flex-1 pt-8 px-8 max-w-2xl">
-        {/* Stories / Active Friends */}
-        <div className="flex gap-5 overflow-x-auto pb-8 no-scrollbar">
-          <div className="flex-shrink-0 flex flex-col items-center gap-2">
-            <Avatar
-              src={currentUser.avatar_url}
-              alt="Your Story"
-              size={60}
-              ring
+        {/* Search Bar */}
+        <div className="relative mb-8 z-50">
+          <div className="relative">
+            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400">search</span>
+            <input
+              type="text"
+              value={homeSearch}
+              onChange={(e) => handleHomeSearch(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
+              placeholder="Search for friends or sparks... (Enter to explore)"
+              className="w-full bg-white border border-orange-50 rounded-2xl py-4 pl-12 pr-6 shadow-sm focus:ring-2 focus:ring-orange-200 focus:border-orange-200 outline-none transition-all text-sm font-medium"
             />
-            <span
-              className="text-[10px] tracking-widest uppercase text-zinc-400"
-              style={{ fontFamily: "Space Grotesk, sans-serif" }}
-            >
-              Your Story
-            </span>
           </div>
-          {friends.map(friend => (
-            <div key={friend.id} className="flex-shrink-0 flex flex-col items-center gap-2">
-              <Avatar
-                src={friend.avatar_url}
-                alt={friend.username}
-                size={60}
-                ring
-              />
-              <span
-                className="text-[10px] tracking-widest uppercase text-zinc-600 font-bold"
-                style={{ fontFamily: "Space Grotesk, sans-serif" }}
+          
+          {searchResults.length > 0 && (
+            <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-2xl shadow-2xl border border-orange-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+              {searchResults.map((user) => (
+                <Link 
+                  key={user.id} 
+                  href={`/profile/${user.username}`}
+                  className="flex items-center gap-3 p-4 hover:bg-orange-50 transition-colors"
+                >
+                  <Avatar src={user.avatar_url} alt={user.username} size={40} />
+                  <div>
+                    <p className="text-sm font-bold text-zinc-900">{user.display_name || user.username}</p>
+                    <p className="text-[10px] text-zinc-400 uppercase tracking-widest">@{user.username}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+        {/* Stories Bar */}
+        <div className="flex gap-5 overflow-x-auto pb-8 no-scrollbar">
+          {/* Your Story Upload */}
+          <div className="flex-shrink-0 flex flex-col items-center gap-2">
+            <div className="relative group">
+              <div 
+                className={`p-[3px] rounded-full transition-transform group-hover:scale-105 cursor-pointer ${allStories.some(s => s.author_id === currentUser.id) ? 'story-ring' : ''}`}
+                onClick={() => {
+                  if (allStories.some(s => s.author_id === currentUser.id)) {
+                    setActiveStoryUserId(currentUser.id);
+                    setCurrentStoryIndex(0);
+                  } else {
+                    storyInputRef.current?.click();
+                  }
+                }}
               >
-                {friend.username}
-              </span>
+                <div className="bg-white p-[2px] rounded-full">
+                  <Avatar
+                    src={currentUser.avatar_url}
+                    alt="Your Story"
+                    size={60}
+                  />
+                </div>
+              </div>
+              <div 
+                onClick={(e) => { e.stopPropagation(); storyInputRef.current?.click(); }}
+                className="absolute bottom-0 right-0 bg-[#FF6B2B] text-white rounded-full w-6 h-6 flex items-center justify-center border-2 border-white shadow-sm hover:scale-110 transition-transform cursor-pointer z-10"
+              >
+                <span className="material-symbols-outlined text-[14px] font-bold">add</span>
+              </div>
+              {isUploadingStory && (
+                <div className="absolute inset-0 bg-white/60 rounded-full flex items-center justify-center z-20">
+                  <div className="w-5 h-5 border-2 border-[#FF6B2B] border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              )}
+            </div>
+            <span className="text-[10px] tracking-widest uppercase text-zinc-400 font-bold">Your Story</span>
+            <input 
+              type="file" 
+              ref={storyInputRef} 
+              onChange={handleStoryUpload} 
+              className="hidden" 
+              accept="image/*,video/*" 
+            />
+          </div>
+
+          {/* Friends' Stories */}
+          {storyAuthors.filter(a => a.author.id !== currentUser.id).map(({ author, stories }) => (
+            <div 
+              key={author.id} 
+              className="flex-shrink-0 flex flex-col items-center gap-2 cursor-pointer group"
+              onClick={() => {
+                setActiveStoryUserId(author.id);
+                setCurrentStoryIndex(0);
+              }}
+            >
+              <div className="p-[3px] rounded-full story-ring transition-transform group-hover:scale-105">
+                <div className="bg-white p-[2px] rounded-full">
+                  <Avatar src={author.avatar_url} alt={author.username} size={58} />
+                </div>
+              </div>
+              <span className="text-[10px] tracking-widest uppercase text-zinc-600 font-bold">{author.username}</span>
             </div>
           ))}
         </div>
+
+        {/* Create Post Section */}
+        <CreatePost currentUser={currentUser} autoFocus={shouldCreate} />
 
         {/* Marshmallow chip */}
         <div className="mb-8">
@@ -333,6 +433,153 @@ export default function HomeClient({
         </div>
       </main>
 
+      {/* Story Viewer Modal */}
+      {activeStoryUserId && activeUserStories.length > 0 && (
+        <div className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center animate-in fade-in duration-300">
+          {/* Progress Bars */}
+          <div className="absolute top-4 left-0 w-full px-4 flex gap-1.5 z-50">
+            {activeUserStories.map((_, idx) => (
+              <div key={idx} className="h-1 flex-1 bg-white/20 rounded-full overflow-hidden">
+                <div 
+                  key={`${activeStoryUserId}-${idx}-${currentStoryIndex}`}
+                  className={`h-full bg-white ${idx === currentStoryIndex ? 'animate-story-progress' : idx < currentStoryIndex ? 'w-full' : 'w-0'}`}
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="absolute top-10 left-4 flex items-center gap-3 z-50">
+            <Avatar src={groupedStories[activeStoryUserId].author.avatar_url} alt="author" size={40} ring />
+            <div className="flex flex-col">
+              <span className="text-white font-bold text-sm drop-shadow-md leading-tight">
+                {groupedStories[activeStoryUserId].author.display_name || groupedStories[activeStoryUserId].author.username}
+              </span>
+              <span className="text-[10px] text-white/60 font-bold uppercase tracking-wider">
+                {new Date(activeUserStories[currentStoryIndex].created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
+          </div>
+
+          <div className="absolute top-10 right-14 flex items-center gap-2 z-50">
+            {activeUserStories[currentStoryIndex].author_id === currentUser.id && (
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteStory(activeUserStories[currentStoryIndex].id);
+                }}
+                className="text-white p-2 hover:bg-red-500/20 rounded-full transition-colors group"
+                title="Delete Story"
+              >
+                <Icon name="delete" size={24} className="group-hover:text-red-400" />
+              </button>
+            )}
+            <button 
+              onClick={() => setActiveStoryUserId(null)}
+              className="text-white p-2 hover:bg-white/10 rounded-full transition-colors"
+            >
+              <Icon name="close" size={28} />
+            </button>
+          </div>
+
+          {/* Story Content Container */}
+          <div className="relative w-full h-[90vh] max-w-[500px] aspect-[9/16] bg-zinc-900 rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/10">
+            {/* Nav regions (Invisible) */}
+            <div 
+              className="absolute left-0 top-0 w-1/4 h-full cursor-pointer z-30"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (currentStoryIndex > 0) {
+                  setCurrentStoryIndex(prev => prev - 1);
+                } else {
+                  const currentAuthorIdx = storyAuthors.findIndex(a => a.author.id === activeStoryUserId);
+                  if (currentAuthorIdx > 0) {
+                    const prevAuthor = storyAuthors[currentAuthorIdx - 1];
+                    setActiveStoryUserId(prevAuthor.author.id);
+                    setCurrentStoryIndex(prevAuthor.stories.length - 1);
+                  } else {
+                    setActiveStoryUserId(null);
+                  }
+                }
+              }}
+            />
+            <div 
+              className="absolute right-0 top-0 w-1/4 h-full cursor-pointer z-30"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (currentStoryIndex < activeUserStories.length - 1) {
+                  setCurrentStoryIndex(prev => prev + 1);
+                } else {
+                  const currentAuthorIdx = storyAuthors.findIndex(a => a.author.id === activeStoryUserId);
+                  if (currentAuthorIdx < storyAuthors.length - 1) {
+                    const nextAuthor = storyAuthors[currentAuthorIdx + 1];
+                    setActiveStoryUserId(nextAuthor.author.id);
+                    setCurrentStoryIndex(0);
+                  } else {
+                    setActiveStoryUserId(null);
+                  }
+                }
+              }}
+            />
+
+            {/* Visible Navigation Buttons */}
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 z-40">
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (currentStoryIndex > 0) setCurrentStoryIndex(prev => prev - 1);
+                  else {
+                    const idx = storyAuthors.findIndex(a => a.author.id === activeStoryUserId);
+                    if (idx > 0) {
+                      setActiveStoryUserId(storyAuthors[idx-1].author.id);
+                      setCurrentStoryIndex(storyAuthors[idx-1].stories.length - 1);
+                    }
+                  }
+                }}
+                className="bg-black/40 hover:bg-black/60 text-white p-3 rounded-full backdrop-blur-md transition-all active:scale-90 shadow-2xl border border-white/20"
+              >
+                <Icon name="chevron_left" size={32} />
+              </button>
+            </div>
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 z-40">
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (currentStoryIndex < activeUserStories.length - 1) setCurrentStoryIndex(prev => prev + 1);
+                  else {
+                    const idx = storyAuthors.findIndex(a => a.author.id === activeStoryUserId);
+                    if (idx < storyAuthors.length - 1) {
+                      setActiveStoryUserId(storyAuthors[idx+1].author.id);
+                      setCurrentStoryIndex(0);
+                    } else {
+                      setActiveStoryUserId(null);
+                    }
+                  }
+                }}
+                className="bg-black/40 hover:bg-black/60 text-white p-3 rounded-full backdrop-blur-md transition-all active:scale-90 shadow-2xl border border-white/20"
+              >
+                <Icon name="chevron_right" size={32} />
+              </button>
+            </div>
+
+            {activeUserStories[currentStoryIndex].media_type === "video" ? (
+              <video 
+                src={activeUserStories[currentStoryIndex].media_url} 
+                autoPlay 
+                muted={false}
+                playsInline
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <img 
+                src={activeUserStories[currentStoryIndex].media_url} 
+                alt="story" 
+                className="w-full h-full object-cover select-none"
+              />
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── Right Sidebar ─────────────────────────────────────── */}
       <aside className="fixed right-0 top-0 h-screen w-80 pt-8 px-6 overflow-y-auto bg-transparent">
         {/* Marshmallow widget */}
@@ -399,29 +646,44 @@ export default function HomeClient({
               suggestions.map((s) => (
                 <div key={s.id} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <Avatar
-                      src={s.avatar_url ?? ""}
-                      alt={s.username}
-                      size={32}
-                    />
+                    <Link href={`/profile/${s.username}`}>
+                      <Avatar
+                        src={s.avatar_url ?? ""}
+                        alt={s.username}
+                        size={32}
+                      />
+                    </Link>
                     <div>
-                      <p
-                        className="text-xs font-bold text-zinc-800"
-                        style={{ fontFamily: "Space Grotesk, sans-serif" }}
-                      >
-                        {s.username}
-                      </p>
+                      <Link href={`/profile/${s.username}`}>
+                        <p
+                          className="text-xs font-bold text-zinc-800 hover:underline"
+                          style={{ fontFamily: "Space Grotesk, sans-serif" }}
+                        >
+                          {s.username}
+                        </p>
+                      </Link>
                       <p className="text-[10px] text-zinc-400">
                         New to CampFire
                       </p>
                     </div>
                   </div>
-                  <button
-                    className="text-[10px] font-bold uppercase tracking-widest text-[#a83900] hover:underline"
-                    style={{ fontFamily: "Space Grotesk, sans-serif" }}
-                  >
-                    Follow
-                  </button>
+                  {followState[s.id] ? (
+                    <button
+                      disabled
+                      className="text-[10px] font-bold uppercase tracking-widest text-zinc-400"
+                      style={{ fontFamily: "Space Grotesk, sans-serif" }}
+                    >
+                      {s.is_public_profile ? "Following" : "Pending"}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleFollow(s.id)}
+                      className="text-[10px] font-bold uppercase tracking-widest text-[#a83900] hover:underline"
+                      style={{ fontFamily: "Space Grotesk, sans-serif" }}
+                    >
+                      Follow
+                    </button>
+                  )}
                 </div>
               ))
             )}

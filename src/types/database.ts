@@ -23,6 +23,7 @@ export interface Profile {
   avatar_url: string | null;
   role: UserRole;
   marshmallow_consent: boolean;
+  is_public_profile: boolean;
   is_verified: boolean;
   is_banned: boolean;
   date_of_birth: string;
@@ -51,6 +52,7 @@ export interface FeedPost extends Post {
   likes_count: number;
   comments_count: number;
   user_has_liked: boolean;
+  user_has_saved: boolean;
 }
 
 // ── Comments ─────────────────────────────────────────────────────────────────
@@ -137,6 +139,18 @@ export interface ChatbotMessage {
   created_at: string;
 }
 
+// ── Stories ──────────────────────────────────────────────────────────────────
+
+export interface Story {
+  id: string;
+  author_id: string;
+  media_url: string;
+  media_type: "image" | "video";
+  created_at: string;
+  expires_at: string;
+  author?: Profile;
+}
+
 // ── Friend suggestion (computed) ─────────────────────────────────────────────
 
 export interface FriendSuggestion {
@@ -145,5 +159,7 @@ export interface FriendSuggestion {
   display_name: string;
   avatar_url: string | null;
   bio: string;
+  is_public_profile: boolean;
+  initial_status?: "accepted" | "pending" | "none";
   mutual_count?: number;
 }

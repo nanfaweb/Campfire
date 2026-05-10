@@ -16,11 +16,46 @@ export default function MarshmallowClient({
   const [messages, setMessages] = useState<ChatbotMessage[]>(initialMessages);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  
+  // --- Sync State ---
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState("");
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
+
+  // --- Sync Function ---
+  const triggerSync = async () => {
+    if (isSyncing) return;
+    
+    setIsSyncing(true);
+    setSyncStatus("Warming up...");
+
+    try {
+      const res = await fetch("/api/marshmallow/sync", { method: "POST" });
+      const data = await res.json();
+
+      if (res.ok) {
+        if (data.count) {
+          setSyncStatus(`Learned ${data.count} new things! ✨`);
+        } else {
+          setSyncStatus("Already up to date! 🔥");
+        }
+      } else {
+        throw new Error(data.error || "Sync failed");
+      }
+    } catch (e) {
+      console.error("Sync error:", e);
+      setSyncStatus("Sync failed ❄️");
+    } finally {
+      setIsSyncing(false);
+      // Clear status after 4 seconds to keep UI clean
+      setTimeout(() => setSyncStatus(""), 4000);
+    }
+  };
 
   const sendMessage = async () => {
     if (!input.trim() || isTyping) return;
@@ -114,16 +149,41 @@ export default function MarshmallowClient({
             </div>
           </div>
         </div>
+
+        {/* --- Sync Brain Button Section --- */}
+        <div className="flex items-center gap-4">
+          {syncStatus && (
+            <span className="text-[12px] font-bold text-[#ff6b2b] font-[Space_Grotesk] animate-in fade-in slide-in-from-right-2">
+              {syncStatus}
+            </span>
+          )}
+          <button
+            onClick={triggerSync}
+            disabled={isSyncing}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full border border-orange-200 font-[Space_Grotesk] text-[11px] font-bold tracking-wider uppercase transition-all
+              ${isSyncing 
+                ? 'bg-orange-50 text-orange-300 cursor-not-allowed' 
+                : 'bg-white text-[#802a00] hover:bg-orange-50 active:scale-95 shadow-sm'
+              }`}
+          >
+            <Icon 
+              name={isSyncing ? "refresh" : "sync"} 
+              size={14} 
+              className={isSyncing ? "animate-spin" : ""} 
+            />
+            {isSyncing ? "Syncing..." : "Sync Brain"}
+          </button>
+        </div>
       </header>
 
       {/* Chat Body */}
       <div className="flex-1 flex overflow-hidden">
         <section className="flex-1 overflow-y-auto chat-scroll px-8 py-10 space-y-8 bg-[#fff8f4]">
           {messages.length === 0 && (
-             <div className="text-center text-zinc-400 mt-10">
+              <div className="text-center text-zinc-400 mt-10">
                 <Icon name="local_fire_department" size={48} className="mx-auto mb-4 text-orange-200" />
-                <p>Say hello to Marshmallow!</p>
-             </div>
+                <p className="font-[Space_Grotesk] font-bold text-[#802a00]/40">Say hello to Marshmallow!</p>
+              </div>
           )}
           
           {messages.map((msg) =>

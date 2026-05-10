@@ -237,7 +237,7 @@ export default function MarshmallowClient({
         </div>
 
         {/* --- Sync Brain Button Section --- */}
-        <div className="flex items-center gap-4">
+        {/* <div className="flex items-center gap-4">
           {syncStatus && (
             <span className="text-[12px] font-bold text-[#ff6b2b] font-[Space_Grotesk] animate-in fade-in slide-in-from-right-2">
               {syncStatus}
@@ -259,7 +259,7 @@ export default function MarshmallowClient({
             />
             {isSyncing ? "Syncing..." : "Sync Brain"}
           </button>
-        </div>
+        </div> */}
       </header>
 
       {/* Chat Body */}

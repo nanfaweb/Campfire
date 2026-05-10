@@ -204,7 +204,7 @@ export function PostCard({ post, currentUserId, highlight }: PostCardProps) {
       }
 
       setIsDeleted(true);
-      deleteFromLocal(post.id, currentUserId);
+      //deleteFromLocal(post.id, currentUserId);
     } catch (err: any) {
       console.error("Delete error:", err);
       alert(`Failed to delete spark: ${err.message || "Something went wrong"}`);

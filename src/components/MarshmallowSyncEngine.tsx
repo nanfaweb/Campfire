@@ -75,7 +75,7 @@ export default function MarshmallowSyncEngine() {
           { event: 'DELETE', schema: 'public' }, // Global delete listener
           async (payload) => {
             const uid = userIdRef.current;
-            if (uid && payload.old?.id) await deleteFromLocal(payload.old.id, uid);
+            // if (uid && payload.old?.id) await deleteFromLocal(payload.old.id, uid);
           }
         )
         .subscribe();

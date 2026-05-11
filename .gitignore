@@ -10,6 +10,7 @@
 !.yarn/releases
 !.yarn/versions
 
+/venv
 # testing
 /coverage
 
@@ -41,3 +42,4 @@ yarn-error.log*
 next-env.d.ts
 
 marshmellow/.env
+marshmellow/chroma_db/

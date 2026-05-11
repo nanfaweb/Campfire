@@ -7,6 +7,7 @@ import { ingestToLocal, deleteFromLocal } from "@/lib/marshmallow-sync";
 export default function MarshmallowSyncEngine() {
   const syncedIds = useRef<Set<string>>(new Set());
   const userIdRef = useRef<string | null>(null);
+  const consentRef = useRef<boolean>(false);
   const supabase = createClient();
 
   useEffect(() => {
@@ -16,6 +17,17 @@ export default function MarshmallowSyncEngine() {
       if (!user) return;
       
       userIdRef.current = user.id;
+
+      // 1.1 Fetch initial consent
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("marshmallow_consent")
+        .eq("id", user.id)
+        .single();
+      
+      if (profile) {
+        consentRef.current = profile.marshmallow_consent;
+      }
       
       // 2. Load cache from localStorage
       const cached = localStorage.getItem(`marshmallow_synced_${user.id}`);
@@ -37,7 +49,9 @@ export default function MarshmallowSyncEngine() {
           { event: 'INSERT', schema: 'public', table: 'posts' },
           async (payload) => {
             const uid = userIdRef.current;
-            if (uid) await ingestToLocal(payload.new.content, "social_post", uid, payload.new.id, payload.new.updated_at);
+            if (uid && consentRef.current) {
+              await ingestToLocal(payload.new.content, "social_post", uid, payload.new.id, payload.new.updated_at);
+            }
           }
         )
         .on(
@@ -45,7 +59,9 @@ export default function MarshmallowSyncEngine() {
           { event: 'UPDATE', schema: 'public', table: 'posts' },
           async (payload) => {
             const uid = userIdRef.current;
-            if (uid) await ingestToLocal(payload.new.content, "social_post", uid, payload.new.id, payload.new.updated_at);
+            if (uid && consentRef.current) {
+              await ingestToLocal(payload.new.content, "social_post", uid, payload.new.id, payload.new.updated_at);
+            }
           }
         )
         .on(
@@ -54,7 +70,7 @@ export default function MarshmallowSyncEngine() {
           async (payload) => {
             const uid = userIdRef.current;
             const newRecord = payload.new;
-            if (uid && (newRecord.sender_id === uid || newRecord.recipient_id === uid)) {
+            if (uid && consentRef.current && (newRecord.sender_id === uid || newRecord.recipient_id === uid)) {
               await ingestToLocal(newRecord.content, "social_message", uid, newRecord.id, newRecord.created_at);
             }
           }
@@ -65,8 +81,13 @@ export default function MarshmallowSyncEngine() {
           async (payload) => {
             const uid = userIdRef.current;
             if (uid && payload.new.id === uid) {
-              const profileText = `Profile: @${payload.new.username} (${payload.new.display_name}). Bio: ${payload.new.bio}`;
-              await ingestToLocal(profileText, "profile", uid, payload.new.id, payload.new.updated_at);
+              // Update local consent cache
+              consentRef.current = payload.new.marshmallow_consent;
+              
+              if (consentRef.current) {
+                const profileText = `Profile: @${payload.new.username} (${payload.new.display_name}). Bio: ${payload.new.bio}`;
+                await ingestToLocal(profileText, "profile", uid, payload.new.id, payload.new.updated_at);
+              }
             }
           }
         )

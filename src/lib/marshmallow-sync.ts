@@ -19,16 +19,20 @@ export async function ingestToLocal(text: string, type: string, userId: string, 
   // Use a composite key for caching (sourceId + updatedAt for edits)
   const cacheKey = updatedAt ? `${sourceId}-${updatedAt}` : sourceId;
   const storageKey = `marshmallow_synced_${userId}`;
-  
+
   // Check local cache
   const cached = localStorage.getItem(storageKey);
   const syncedSet = new Set(cached ? JSON.parse(cached) : []);
-  
+
   if (syncedSet.has(cacheKey)) return true;
 
   // Use content's own timestamp if available, otherwise fall back to current time
   const date = updatedAt ? new Date(updatedAt) : new Date();
   const timestamp = formatTimestamp(date);
+
+  const hasConsent = localStorage.getItem(`marshmallow_consent_${userId}`) === 'true';
+  console.log(hasConsent);
+  if (!hasConsent) return;
 
   try {
     const res = await fetch("http://localhost:8000/ingest", {
@@ -41,7 +45,7 @@ export async function ingestToLocal(text: string, type: string, userId: string, 
         text,
         metadata: {
           source: "marshmellow",
-          type: type, 
+          type: type,
           user_id: userId,
           source_id: sourceId,
           updated_at: updatedAt,
@@ -49,7 +53,7 @@ export async function ingestToLocal(text: string, type: string, userId: string, 
         }
       })
     });
-    
+
     if (res.ok) {
       syncedSet.add(cacheKey);
       localStorage.setItem(storageKey, JSON.stringify(Array.from(syncedSet)));

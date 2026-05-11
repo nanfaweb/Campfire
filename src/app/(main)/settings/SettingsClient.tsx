@@ -57,6 +57,7 @@ export default function SettingsClient({
     } finally {
       setIsSaving(false);
     }
+    localStorage.setItem(`marshmallow_consent_${profile.id}`, formData.marshmallowConsent.toString());
   };
 
   const handleLogout = async () => {
@@ -149,7 +150,7 @@ export default function SettingsClient({
             {/* Privacy & AI Card */}
             <div className="bg-white rounded-[24px] p-8 shadow-[0_4px_20px_-2px_hsla(25,30%,20%,0.08)] border border-[#F5EBE1]">
               <h2 className="text-2xl text-[#843615] font-extrabold mb-6">Privacy & AI</h2>
-              
+
               <div className="space-y-6">
                 <label className="flex items-start gap-4 cursor-pointer">
                   <input
